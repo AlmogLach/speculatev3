@@ -26,7 +26,7 @@ export default function AdminMarketManager({ markets }: AdminMarketManagerProps)
       // SpeculateCore resolveMarket doesn't take yesWins parameter
       writeContract({
         address: addresses.core,
-        abi: SpeculateCoreABI,
+                abi: SpeculateCoreABI,
         functionName: 'resolveMarket',
         args: [BigInt(marketId)],
       });

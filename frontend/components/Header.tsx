@@ -10,48 +10,61 @@ export default function Header() {
   const isActive = (path: string) => pathname === path;
 
   return (
-    <header className="border-b border-gray-200 bg-white shadow-sm">
+    <header className="border-b border-gray-200 bg-[#FAF9FF] shadow-sm">
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           <div className="flex items-center">
             <Link href="/" className="flex items-center gap-2">
-              <div className="text-2xl">📊</div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+              <div className="w-8 h-8 rounded-lg bg-[#14B8A6] flex items-center justify-center">
+                <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                </svg>
+              </div>
+              <h1 className="text-2xl font-bold text-gray-900">
                 SpeculateX
               </h1>
-              <span className="text-xs text-gray-500 font-normal">v3</span>
             </Link>
           </div>
-          <nav className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-8">
+            <Link
+              href="/"
+              className={`text-sm font-medium transition-colors ${
+                isActive('/')
+                  ? 'text-[#14B8A6]'
+                  : 'text-gray-700 hover:text-[#14B8A6]'
+              }`}
+            >
+              Home
+            </Link>
             <Link
               href="/markets"
               className={`text-sm font-medium transition-colors ${
                 isActive('/markets')
-                  ? 'text-green-600 border-b-2 border-green-600 pb-1'
-                  : 'text-gray-700 hover:text-green-600'
+                  ? 'text-[#14B8A6]'
+                  : 'text-gray-700 hover:text-[#14B8A6]'
               }`}
             >
               Markets
             </Link>
             <Link
-              href="/portfolio"
+              href="/create"
               className={`text-sm font-medium transition-colors ${
-                isActive('/portfolio')
-                  ? 'text-green-600 border-b-2 border-green-600 pb-1'
-                  : 'text-gray-700 hover:text-green-600'
+                isActive('/create')
+                  ? 'text-[#14B8A6]'
+                  : 'text-gray-700 hover:text-[#14B8A6]'
               }`}
             >
-              Portfolio
+              Create
             </Link>
             <Link
-              href="/admin"
+              href="/claim"
               className={`text-sm font-medium transition-colors ${
-                isActive('/admin')
-                  ? 'text-green-600 border-b-2 border-green-600 pb-1'
-                  : 'text-gray-700 hover:text-green-600'
+                isActive('/claim')
+                  ? 'text-[#14B8A6]'
+                  : 'text-gray-700 hover:text-[#14B8A6]'
               }`}
             >
-              Admin
+              Claim
             </Link>
           </nav>
           <div className="flex items-center gap-4">

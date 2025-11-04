@@ -18,13 +18,13 @@ export async function getMarketCount(): Promise<bigint> {
 // Get single market
 export async function getMarket(id: bigint) {
   try {
-    const result = await readContract(config, {
-      address: addresses.core,
-      abi: coreAbi,
-      functionName: 'markets',
-      args: [id],
-    }) as any;
-    
+  const result = await readContract(config, {
+    address: addresses.core,
+    abi: coreAbi,
+    functionName: 'markets',
+    args: [id],
+  }) as any;
+  
     // SpeculateCore market structure (tuple order - 15 fields):
     // yes, no, reserveYes, reserveNo, usdcVault, totalPairsUSDC, feeTreasuryBps, feeVaultBps, feeLpBps, maxTradeBps, status, exists, sellFees, question, lp
     // viem may return an object with named fields or a tuple array
@@ -140,11 +140,11 @@ export async function getMarket(id: bigint) {
   } catch (error: any) {
     console.error('Error loading market:', error);
     // Return a minimal market object to prevent crashes
-    return {
+  return {
       yes: addresses.usdc as `0x${string}`,
       no: addresses.usdc as `0x${string}`,
-      reserveYes: 0n,
-      reserveNo: 0n,
+    reserveYes: 0n,
+    reserveNo: 0n,
       usdcVault: 0n,
       totalPairs: 0n,
       totalPairsUSDC: 0n,
@@ -159,14 +159,14 @@ export async function getMarket(id: bigint) {
       lp: addresses.admin,
       feeBps: 200,
       usdc: addresses.usdc,
-      k: 0n,
-      virtualYes: 0n,
-      virtualNo: 0n,
+    k: 0n,
+    virtualYes: 0n,
+    virtualNo: 0n,
       feeUSDC: 0n,
       expiry: 0n,
       creator: addresses.admin,
       yesWins: false,
-    };
+  };
   }
 }
 

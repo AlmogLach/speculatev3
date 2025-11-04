@@ -184,7 +184,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
         // SpeculateCore: tokens = mulDiv(netUsdc, 1e18, priceE6)
         const usdcIn = parseFloat(amount);
         const priceE6 = side === 'yes' ? currentPriceYesE6 : currentPriceNoE6;
-        
+
         const usdcInBigInt = parseUnits(usdcIn.toFixed(6), 6);
         const fee = (usdcInBigInt * BigInt(totalFeeBps)) / 10000n;
         const netUsdcBigInt = usdcInBigInt - fee;
