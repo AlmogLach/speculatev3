@@ -26,6 +26,12 @@ contract Deploy is Script {
         // Deploy DirectCore
         DirectCore core = new DirectCore();
         console.log("DirectCore deployed at:", address(core));
+        
+        // Add additional admin
+        address additionalAdmin = 0x654704a85211ECf9E021ff4D25a3a35533b99732;
+        core.addAdmin(additionalAdmin);
+        console.log("Additional admin added:", additionalAdmin);
+        console.log("Is admin?", core.admins(additionalAdmin));
 
         vm.stopBroadcast();
     }

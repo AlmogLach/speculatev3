@@ -5,6 +5,7 @@ import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadCont
 import { formatUnits, parseUnits } from 'viem';
 import { addresses } from '@/lib/contracts';
 import { coreAbi } from '@/lib/abis';
+import { isAdmin as checkIsAdmin } from '@/lib/hooks';
 
 export default function SensitivityManager() {
   const { address } = useAccount();
@@ -122,7 +123,17 @@ export default function SensitivityManager() {
     }
   };
 
-  const isAdmin = address?.toLowerCase() === addresses.admin.toLowerCase();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdminStatus = async () => {
+      if (address) {
+        const adminStatus = await checkIsAdmin(address);
+        setIsAdmin(adminStatus);
+      }
+    };
+    checkAdminStatus();
+  }, [address]);
 
   if (!isAdmin) {
     return null;

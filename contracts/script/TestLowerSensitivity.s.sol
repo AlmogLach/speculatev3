@@ -89,7 +89,7 @@ contract TestLowerSensitivity is Script {
     }
 
     function _logVault(uint256 id, DirectCore core) internal view {
-        (,,,,uint256 vault,uint16 feeBps,uint256 priceYesE18,uint256 feeUSDC,,,,) = core.markets(id);
+        (MockUSDC mUsdc, PositionToken yesToken, PositionToken noToken, uint256 vault, uint16 feeBps, uint256 priceYesE18, uint256 feeUSDC,,,,,) = core.markets(id);
         console.log("  Vault:", vault / ONE_E6);
         console.log("  Fees:", feeUSDC / ONE_E6);
         console.log("  Price YES:", priceYesE18);

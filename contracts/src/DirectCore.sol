@@ -38,7 +38,8 @@ contract DirectCore {
         bool yesWins;
     }
 
-    address public admin;
+    address public admin; // Legacy single admin for backward compatibility
+    mapping(address => bool) public admins; // Multiple admins support
     address public treasury;
     uint256 public marketCount;
     mapping(uint256 => Market) public markets;
@@ -57,10 +58,33 @@ contract DirectCore {
     event MarketPaused(uint256 indexed id);
     event MarketUnpaused(uint256 indexed id);
     event MarketResolved(uint256 indexed id, bool yesWins);
+    event AdminAdded(address indexed admin);
+    event AdminRemoved(address indexed admin);
 
-    constructor() { admin = msg.sender; }
-    modifier onlyAdmin() { require(msg.sender == admin, "not admin"); _; }
-    function transferAdmin(address newAdmin) external onlyAdmin { require(newAdmin != address(0), "zero"); admin = newAdmin; }
+    constructor() { 
+        admin = msg.sender;
+        admins[msg.sender] = true; // Initialize deployer as admin
+    }
+    modifier onlyAdmin() { 
+        require(msg.sender == admin || admins[msg.sender], "not admin"); 
+        _; 
+    }
+    function transferAdmin(address newAdmin) external onlyAdmin { 
+        require(newAdmin != address(0), "zero"); 
+        admin = newAdmin;
+        admins[newAdmin] = true; // Also add to admins mapping
+    }
+    function addAdmin(address newAdmin) external onlyAdmin {
+        require(newAdmin != address(0), "zero");
+        admins[newAdmin] = true;
+        emit AdminAdded(newAdmin);
+    }
+    function removeAdmin(address adminToRemove) external onlyAdmin {
+        require(adminToRemove != admin, "cannot remove primary admin");
+        require(admins[adminToRemove], "not an admin");
+        admins[adminToRemove] = false;
+        emit AdminRemoved(adminToRemove);
+    }
     function setTreasury(address t) external onlyAdmin { require(t != address(0), "zero"); treasury = t; }
     function setSensitivity(uint256 newSensitivityE18) external onlyAdmin {
         require(newSensitivityE18 >= 1e15 && newSensitivityE18 <= 5e16, "range"); // 0.001 - 0.05

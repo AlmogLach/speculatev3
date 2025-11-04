@@ -1,6 +1,6 @@
 export const addresses = {
-  core: (process.env.NEXT_PUBLIC_CORE_ADDRESS || '0xFc648ebeb2118be2598eb6fc008D4c94b7Ba0Ba3') as `0x${string}`,
-  usdc: (process.env.NEXT_PUBLIC_USDC_ADDRESS || '0xF0D8e40068AA5368581Cc6B251E6C2a4aa51E7a3') as `0x${string}`,
+  core: (process.env.NEXT_PUBLIC_CORE_ADDRESS || '0x3a9F3AE06f2D23F76B1882BB5864B64c107FC37E') as `0x${string}`,
+  usdc: (process.env.NEXT_PUBLIC_USDC_ADDRESS || '0xf623e17a1e6aBd8F9C032243385703483586ACeE') as `0x${string}`,
   admin: (process.env.NEXT_PUBLIC_ADMIN_ADDRESS || '0xbd0e87A678f3D53a27D1bb186cfc8fd465433554') as `0x${string}`,
 };
 

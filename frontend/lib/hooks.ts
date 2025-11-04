@@ -71,3 +71,34 @@ export async function getPriceNo(marketId: bigint): Promise<string> {
   
   return formatUnits(price, 18);
 }
+
+// Check if an address is an admin
+export async function isAdmin(address: `0x${string}`): Promise<boolean> {
+  try {
+    // Check primary admin
+    const primaryAdmin = await readContract(config, {
+      address: addresses.core,
+      abi: coreAbi,
+      functionName: 'admin',
+      args: [],
+    }) as `0x${string}`;
+    
+    if (address.toLowerCase() === primaryAdmin.toLowerCase()) {
+      return true;
+    }
+    
+    // Check admins mapping
+    const isAdminMapping = await readContract(config, {
+      address: addresses.core,
+      abi: coreAbi,
+      functionName: 'admins',
+      args: [address],
+    }) as boolean;
+    
+    return isAdminMapping;
+  } catch (error) {
+    console.error('Error checking admin status:', error);
+    // Fallback to simple address comparison
+    return address.toLowerCase() === addresses.admin.toLowerCase();
+  }
+}

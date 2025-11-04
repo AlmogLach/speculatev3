@@ -7,7 +7,7 @@ import AdminMarketManager from '@/components/AdminMarketManager';
 import MintUsdcForm from '@/components/MintUsdcForm';
 import SensitivityManager from '@/components/SensitivityManager';
 import Header from '@/components/Header';
-import { getMarketCount, getMarket } from '@/lib/hooks';
+import { getMarketCount, getMarket, isAdmin as checkIsAdmin } from '@/lib/hooks';
 import { addresses } from '@/lib/contracts';
 import { formatUnits } from 'viem';
 
@@ -25,11 +25,15 @@ export default function AdminPage() {
   const [isAdmin, setIsAdmin] = useState(false);
 
   useEffect(() => {
-    if (isConnected && address) {
-      // Check if user is admin
-      setIsAdmin(address.toLowerCase() === addresses.admin.toLowerCase());
-      loadMarkets();
-    }
+    const checkAdmin = async () => {
+      if (isConnected && address) {
+        // Check if user is admin (checks both primary admin and admins mapping)
+        const adminStatus = await checkIsAdmin(address);
+        setIsAdmin(adminStatus);
+        loadMarkets();
+      }
+    };
+    checkAdmin();
   }, [isConnected, address]);
 
   const loadMarkets = async () => {
