@@ -312,7 +312,7 @@ export default function ClaimPage() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />
                 </svg>
                 <p className="text-lg font-semibold text-gray-900 mb-2">No rewards available</p>
-                <p className="text-gray-600">You don't have any claimable rewards from resolved markets.</p>
+                <p className="text-gray-600">You don&apos;t have any claimable rewards from resolved markets.</p>
               </div>
             ) : (
               claimableRewards.map((reward) => (

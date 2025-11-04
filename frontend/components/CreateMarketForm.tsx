@@ -71,7 +71,7 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
         setNoSymbol(`${shortId.substring(0, 10)}-NO`);
       }
     }
-  }, [question]);
+  }, [question, yesName, yesSymbol, noName, noSymbol]);
 
   // Check approval status
   useEffect(() => {

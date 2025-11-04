@@ -139,7 +139,7 @@ export default function MarketsPage() {
           <Link href="#markets" className="inline-flex items-center text-[#14B8A6] text-sm font-semibold mb-4">
             <span className="mr-1">↑</span> BROWSE MARKETS
           </Link>
-          <h1 className="text-5xl font-bold text-gray-900 mb-4">What's the Market Thinking?</h1>
+          <h1 className="text-5xl font-bold text-gray-900 mb-4">What&apos;s the Market Thinking?</h1>
           <p className="text-lg text-gray-600 max-w-2xl">
             Trade what you believe in every market reflects real-time sentiment and liquidity.
           </p>
