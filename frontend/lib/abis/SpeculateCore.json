@@ -359,6 +359,21 @@
     },
     {
         "type":  "function",
+        "name":  "grantMarketCreator",
+        "inputs":  [
+                       {
+                           "name":  "account",
+                           "type":  "address",
+                           "internalType":  "address"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
         "name":  "pauseMarket",
         "inputs":  [
                        {

@@ -43,8 +43,19 @@ export default function AdminManager() {
     error: addError
   } = useWriteContract();
   
+  // Separate write contract for granting market creator role
+  const { 
+    data: marketCreatorHash, 
+    writeContract: grantMarketCreator, 
+    isPending: isGrantingMarketCreator,
+  } = useWriteContract();
+  
   const { isLoading: isConfirmingAdd, isSuccess: isAddSuccess } = useWaitForTransactionReceipt({ 
     hash: addHash 
+  });
+  
+  const { isLoading: isConfirmingMarketCreator, isSuccess: isMarketCreatorSuccess } = useWaitForTransactionReceipt({ 
+    hash: marketCreatorHash 
   });
 
   // Write contract for removing admin
@@ -84,10 +95,23 @@ export default function AdminManager() {
     loadAdmins();
   }, [deployerHasRole, isAddSuccess, isRemoveSuccess]);
 
-  // Handle add admin success
+  // Handle add admin success - also grant MARKET_CREATOR_ROLE
   useEffect(() => {
-    if (isAddSuccess) {
-      alert('Admin added successfully!');
+    if (isAddSuccess && newAdminAddress) {
+      // Automatically grant MARKET_CREATOR_ROLE so the admin can create markets
+      grantMarketCreator({
+        address: addresses.core,
+        abi: coreAbi,
+        functionName: 'grantMarketCreator',
+        args: [newAdminAddress as `0x${string}`],
+      });
+    }
+  }, [isAddSuccess, newAdminAddress, grantMarketCreator]);
+
+  // Handle both admin and market creator roles granted
+  useEffect(() => {
+    if (isAddSuccess && (isMarketCreatorSuccess || !isGrantingMarketCreator)) {
+      alert('Admin added successfully! They can now create markets.');
       setNewAdminAddress('');
       setLoading(true);
       // Reload admins
@@ -95,7 +119,7 @@ export default function AdminManager() {
         setLoading(false);
       }, 2000);
     }
-  }, [isAddSuccess]);
+  }, [isAddSuccess, isMarketCreatorSuccess, isGrantingMarketCreator]);
 
   // Handle remove admin success
   useEffect(() => {
@@ -123,6 +147,9 @@ export default function AdminManager() {
         functionName: 'grantRole',
         args: [DEFAULT_ADMIN_ROLE as `0x${string}`, newAdminAddress as `0x${string}`],
       });
+      
+      // Also grant MARKET_CREATOR_ROLE so they can create markets
+      // This will be called automatically after admin role is granted (see useEffect below)
     } catch (error: any) {
       console.error('Error adding admin:', error);
       alert(`Failed to add admin: ${error?.message || 'Unknown error'}`);
@@ -205,13 +232,13 @@ export default function AdminManager() {
 
         <button
           onClick={handleAddAdmin}
-          disabled={isAdding || isConfirmingAdd || !newAdminAddress}
+          disabled={isAdding || isConfirmingAdd || isGrantingMarketCreator || isConfirmingMarketCreator || !newAdminAddress}
           className="w-full rounded-md bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          {(isAdding || isConfirmingAdd) ? 'Adding Admin...' : 'Add Admin'}
+          {(isAdding || isConfirmingAdd || isGrantingMarketCreator || isConfirmingMarketCreator) ? 'Adding Admin...' : 'Add Admin'}
         </button>
 
-        {(isAdding || isConfirmingAdd) && (
+        {(isAdding || isConfirmingAdd || isGrantingMarketCreator || isConfirmingMarketCreator) && (
           <div className="p-3 bg-yellow-50 rounded-md border border-yellow-200">
             <p className="text-sm text-yellow-800">
               Transaction pending... Please wait for confirmation.
@@ -234,6 +261,46 @@ export default function AdminManager() {
             </p>
           </div>
         )}
+      </div>
+
+      <div className="mt-6 pt-6 border-t border-gray-200">
+        <h4 className="text-sm font-medium text-gray-700 mb-3">Grant Market Creator Role</h4>
+        <p className="text-xs text-gray-600 mb-3">
+          Admins need MARKET_CREATOR_ROLE to create markets. New admins get this automatically, but you can grant it to existing admins here:
+        </p>
+        <div className="space-y-2">
+          <input
+            type="text"
+            id="marketCreatorAddress"
+            placeholder="0x..."
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+          />
+          <button
+            onClick={async () => {
+              const input = document.getElementById('marketCreatorAddress') as HTMLInputElement;
+              const address = input?.value;
+              if (!address || !address.startsWith('0x') || address.length !== 42) {
+                alert('Please enter a valid Ethereum address');
+                return;
+              }
+              try {
+                await grantMarketCreator({
+                  address: addresses.core,
+                  abi: coreAbi,
+                  functionName: 'grantMarketCreator',
+                  args: [address as `0x${string}`],
+                });
+                input.value = '';
+              } catch (error: any) {
+                alert(`Failed: ${error?.message || 'Unknown error'}`);
+              }
+            }}
+            disabled={isGrantingMarketCreator || isConfirmingMarketCreator}
+            className="w-full rounded-md bg-blue-600 px-3 py-2 text-sm font-semibold text-white hover:bg-blue-500 disabled:opacity-50"
+          >
+            Grant Market Creator Role
+          </button>
+        </div>
       </div>
 
       <div className="mt-6 pt-6 border-t border-gray-200">
