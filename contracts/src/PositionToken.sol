@@ -10,6 +10,8 @@ contract PositionToken is ERC20, AccessControl {
 
     constructor(string memory name_, string memory symbol_, address admin) ERC20(name_, symbol_) {
         _grantRole(DEFAULT_ADMIN_ROLE, admin);
+        _grantRole(MINTER_ROLE, admin);
+        _grantRole(BURNER_ROLE, admin);
     }
 
     function decimals() public pure override returns (uint8) { return 18; }

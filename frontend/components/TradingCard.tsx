@@ -31,7 +31,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
   const { isLoading: isApprovalConfirming, isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({ hash: approvalHash });
 
   // Get market data to access token addresses
-  // Note: DirectCore markets() returns: [usdc, yes, no, usdcVault, feeBps, priceYesE18, feeUSDC, question, expiry, creator, status, yesWins]
+  // SpeculateCore markets() returns: [yes, no, reserveYes, reserveNo, usdcVault, totalPairsUSDC, feeTreasuryBps, feeVaultBps, feeLpBps, maxTradeBps, status, exists, sellFees, question, lp]
   const { data: marketData } = useReadContract({
     address: addresses.core,
     abi: coreAbi,
@@ -42,9 +42,15 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
     },
   }) as any;
 
-  // Extract token addresses from tuple (index 1 = yes, index 2 = no)
-  const yesTokenAddress = marketData?.[1] as `0x${string}` | undefined;
-  const noTokenAddress = marketData?.[2] as `0x${string}` | undefined;
+  // Extract token addresses from tuple (index 0 = yes, index 1 = no)
+  // Handle both object and array formats
+  const isMarketDataObject = marketData && typeof marketData === 'object' && !Array.isArray(marketData) && marketData.yes !== undefined;
+  const yesTokenAddress = isMarketDataObject 
+    ? (marketData.yes as `0x${string}`)
+    : (marketData?.[0] as `0x${string}` | undefined);
+  const noTokenAddress = isMarketDataObject
+    ? (marketData.no as `0x${string}`)
+    : (marketData?.[1] as `0x${string}` | undefined);
 
   // Debug logging
   useEffect(() => {
@@ -92,32 +98,24 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
     },
   });
 
-  // Get market tuple for feeBps and other fields
-  const { data: marketReserves } = useReadContract({
-    address: addresses.core,
-    abi: coreAbi,
-    functionName: 'markets',
-    args: [BigInt(marketId)],
-    query: {
-      enabled: marketId > 0,
-    },
-  }) as any;
+  // Get market data for feeBps and other fields (same as marketData above, but keeping for compatibility)
+  const marketReserves = marketData;
 
-  // Get current prices for estimation
-  const { data: priceYesE18 } = useReadContract({
+  // Get current prices for estimation (SpeculateCore uses E6, not E18)
+  const { data: priceYesE6 } = useReadContract({
     address: addresses.core,
     abi: coreAbi,
-    functionName: 'priceYesE18',
+    functionName: 'spotPriceYesE6',
     args: [BigInt(marketId)],
     query: {
       enabled: marketId > 0,
     },
   });
 
-  const { data: priceNoE18 } = useReadContract({
+  const { data: priceNoE6 } = useReadContract({
     address: addresses.core,
     abi: coreAbi,
-    functionName: 'priceNoE18',
+    functionName: 'spotPriceNoE6',
     args: [BigInt(marketId)],
     query: {
       enabled: marketId > 0,
@@ -142,24 +140,33 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
     }
   }, [usdcBal, yesBal, noBal]);
 
-  // Calculate estimated output using direct pricing: buy => net/price, sell => tokens*price
+  // Calculate estimated output using SpeculateCore linear AMM: buy => mulDiv(netUsdc, 1e18, priceE6), sell => mulDiv(tokens, priceE6, 1e18)
   useEffect(() => {
-    if (!amount || parseFloat(amount) <= 0 || !marketReserves) {
+    if (!amount || parseFloat(amount) <= 0) {
       setEstimatedOutput(null);
       return;
     }
 
     try {
-      // DirectCore markets() returns: [usdc, yes, no, usdcVault, feeBps, priceYesE18, feeUSDC, question, expiry, creator, status, yesWins]
-      const feeBps = marketReserves[4] ? Number(marketReserves[4]) : 100; // Default 1%
-      const priceYesE18FromTuple = marketReserves[5] ? BigInt(marketReserves[5].toString()) : null;
+      // Get fee structure from market data
+      const isMarketReservesObject = marketReserves && typeof marketReserves === 'object' && !Array.isArray(marketReserves) && marketReserves.feeTreasuryBps !== undefined;
+      const feeTreasuryBps = isMarketReservesObject 
+        ? Number(marketReserves.feeTreasuryBps || 0)
+        : Number(marketReserves?.[6] || 0);
+      const feeVaultBps = isMarketReservesObject 
+        ? Number(marketReserves.feeVaultBps || 0)
+        : Number(marketReserves?.[7] || 0);
+      const feeLpBps = isMarketReservesObject 
+        ? Number(marketReserves.feeLpBps || 0)
+        : Number(marketReserves?.[8] || 0);
+      const totalFeeBps = feeTreasuryBps + feeVaultBps + feeLpBps;
       
-      // Use price from tuple if available, otherwise fall back to hooks
-      const currentPriceYesE18 = priceYesE18FromTuple || (priceYesE18 as bigint | null);
-      const currentPriceNoE18 = currentPriceYesE18 ? (10n**18n - currentPriceYesE18) : null;
+      // Use prices from hooks (E6 format)
+      const currentPriceYesE6 = priceYesE6 as bigint | null;
+      const currentPriceNoE6 = priceNoE6 as bigint | null;
 
-      if (!currentPriceYesE18 || currentPriceYesE18 === 0n) {
-        console.log('Estimation: No price available', { priceYesE18FromTuple, priceYesE18, marketReserves });
+      if (!currentPriceYesE6 || !currentPriceNoE6 || currentPriceYesE6 === 0n || currentPriceNoE6 === 0n) {
+        console.log('Estimation: No price available', { priceYesE6, priceNoE6 });
         setEstimatedOutput(null);
         return;
       }
@@ -168,48 +175,37 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
         amount,
         tradeMode,
         side,
-        feeBps,
-        priceYesE18: currentPriceYesE18.toString(),
-        priceNoE18: currentPriceNoE18?.toString(),
+        totalFeeBps,
+        priceYesE6: currentPriceYesE6.toString(),
+        priceNoE6: currentPriceNoE6.toString(),
       });
 
       if (tradeMode === 'buy') {
-        // Direct pricing: tokens ≈ netUSDC / price
+        // SpeculateCore: tokens = mulDiv(netUsdc, 1e18, priceE6)
         const usdcIn = parseFloat(amount);
-        const priceE18 = side === 'yes' ? currentPriceYesE18 : (currentPriceNoE18 || 0n);
+        const priceE6 = side === 'yes' ? currentPriceYesE6 : currentPriceNoE6;
         
-        if (priceE18 === 0n) {
-          setEstimatedOutput(null);
-          return;
-        }
-
         const usdcInBigInt = parseUnits(usdcIn.toFixed(6), 6);
-        const fee = (usdcInBigInt * BigInt(feeBps)) / 10000n;
+        const fee = (usdcInBigInt * BigInt(totalFeeBps)) / 10000n;
         const netUsdcBigInt = usdcInBigInt - fee;
         
-        // tokensOutE18 = (netUsdc(6d) * 1e30) / priceE18
-        // This matches DirectCore: tokensOut = (_usdcToE18(net) * ONE_E18) / p
-        const tokensOutE18 = (netUsdcBigInt * 10n**30n) / priceE18;
+        // tokensOut = (netUsdc(6d) * 1e18) / priceE6
+        // This matches SpeculateCore: Math.mulDiv(netUsdc, 1e18, priceE6)
+        const tokensOutE18 = (netUsdcBigInt * 10n**18n) / priceE6;
         const tokensOut = parseFloat(formatUnits(tokensOutE18, 18));
         
         // Display the actual tokens you'll receive
         setEstimatedOutput(`≈ ${tokensOut.toFixed(4)} ${side.toUpperCase()} tokens`);
       } else {
-        // Selling: gross = tokens * price; net = gross - fee
+        // Selling: SpeculateCore: grossUsdc = mulDiv(tokensIn, priceE6, 1e18)
         const tokensIn = parseFloat(amount);
         const tokensInBigInt = parseUnits(tokensIn.toFixed(18), 18);
-        const priceE18 = side === 'yes' ? currentPriceYesE18 : (currentPriceNoE18 || 0n);
+        const priceE6 = side === 'yes' ? currentPriceYesE6 : currentPriceNoE6;
         
-        if (priceE18 === 0n) {
-          setEstimatedOutput(null);
-          return;
-        }
-
-        // grossE18 = (tokensIn * priceE18) / 1e18
-        const grossE18 = (tokensInBigInt * priceE18) / 10n**18n;
-        // Convert from 18 decimals to 6 decimals: grossE18 / 1e12
-        const grossUsdc6 = grossE18 / 10n**12n;
-        const fee = (grossUsdc6 * BigInt(feeBps)) / 10000n;
+        // grossUsdc(6d) = (tokensIn(18d) * priceE6) / 1e18
+        const grossUsdc6 = (tokensInBigInt * priceE6) / 10n**18n;
+        // For sells: fees only if sellFees is enabled (default is fee-free)
+        const fee = totalFeeBps > 0 ? (grossUsdc6 * BigInt(totalFeeBps)) / 10000n : 0n;
         const netUsdc = grossUsdc6 - fee;
         const usdcOutFormatted = parseFloat(formatUnits(netUsdc, 6));
         setEstimatedOutput(`≈ $${usdcOutFormatted.toFixed(2)} USDC`);
@@ -218,7 +214,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
       console.error('Error calculating estimated output:', error);
       setEstimatedOutput(null);
     }
-  }, [amount, tradeMode, side, marketReserves, priceYesE18, priceNoE18]);
+  }, [amount, tradeMode, side, marketReserves, priceYesE6, priceNoE6]);
 
   // Check USDC approval for buying
   const { data: usdcAllowance, refetch: refetchAllowance } = useReadContract({
@@ -426,17 +422,59 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
     try {
       if (tradeMode === 'buy') {
         const usdcAmount = parseUnits(amount, 6);
+        // Calculate minimum output (with 5% slippage tolerance)
+        const isMarketReservesObject = marketReserves && typeof marketReserves === 'object' && !Array.isArray(marketReserves);
+        const priceE6 = side === 'yes' ? (priceYesE6 as bigint) : (priceNoE6 as bigint);
+        const feeTreasuryBps = isMarketReservesObject 
+          ? Number(marketReserves.feeTreasuryBps || 0)
+          : Number(marketReserves?.[6] || 0);
+        const feeVaultBps = isMarketReservesObject 
+          ? Number(marketReserves.feeVaultBps || 0)
+          : Number(marketReserves?.[7] || 0);
+        const feeLpBps = isMarketReservesObject 
+          ? Number(marketReserves.feeLpBps || 0)
+          : Number(marketReserves?.[8] || 0);
+        const totalFeeBps = feeTreasuryBps + feeVaultBps + feeLpBps;
+        
+        const fee = (usdcAmount * BigInt(totalFeeBps)) / 10000n;
+        const netUsdc = usdcAmount - fee;
+        const estimatedTokens = (netUsdc * 10n**18n) / priceE6;
+        const minOut = (estimatedTokens * 95n) / 100n; // 5% slippage tolerance
+        
         writeContract({
           address: addresses.core,
           abi: coreAbi,
-          functionName: 'buy',
-          args: [BigInt(marketId), side === 'yes', usdcAmount],
+          functionName: side === 'yes' ? 'buyYes' : 'buyNo',
+          args: [BigInt(marketId), usdcAmount, minOut],
         });
       } else {
         // Selling returns USDC directly
         const tokenAmount = parseUnits(amount, 18);
         
-        const confirmMessage = `Selling ${amount} ${side.toUpperCase()} tokens will return USDC (minus ~1% fee). Continue?`;
+        // Calculate minimum USDC output (with 5% slippage tolerance)
+        const priceE6 = side === 'yes' ? (priceYesE6 as bigint) : (priceNoE6 as bigint);
+        const isMarketReservesObject = marketReserves && typeof marketReserves === 'object' && !Array.isArray(marketReserves);
+        const sellFeesEnabled = isMarketReservesObject 
+          ? Boolean(marketReserves.sellFees)
+          : Boolean(marketReserves?.[12] || false);
+        const feeTreasuryBps = isMarketReservesObject 
+          ? Number(marketReserves.feeTreasuryBps || 0)
+          : Number(marketReserves?.[6] || 0);
+        const feeVaultBps = isMarketReservesObject 
+          ? Number(marketReserves.feeVaultBps || 0)
+          : Number(marketReserves?.[7] || 0);
+        const feeLpBps = isMarketReservesObject 
+          ? Number(marketReserves.feeLpBps || 0)
+          : Number(marketReserves?.[8] || 0);
+        const totalFeeBps = sellFeesEnabled ? (feeTreasuryBps + feeVaultBps + feeLpBps) : 0;
+        
+        const grossUsdc = (tokenAmount * priceE6) / 10n**18n;
+        const fee = totalFeeBps > 0 ? (grossUsdc * BigInt(totalFeeBps)) / 10000n : 0n;
+        const estimatedUsdc = grossUsdc - fee;
+        const minUsdcOut = (estimatedUsdc * 95n) / 100n; // 5% slippage tolerance
+        
+        const feeText = sellFeesEnabled ? `minus ${totalFeeBps/100}% fee` : 'fee-free';
+        const confirmMessage = `Selling ${amount} ${side.toUpperCase()} tokens will return ~${formatUnits(estimatedUsdc, 6)} USDC (${feeText}). Continue?`;
         if (!confirm(confirmMessage)) {
           return;
         }
@@ -444,8 +482,8 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
         writeContract({
           address: addresses.core,
           abi: coreAbi,
-          functionName: 'sell',
-          args: [BigInt(marketId), side === 'yes', tokenAmount],
+          functionName: side === 'yes' ? 'sellYes' : 'sellNo',
+          args: [BigInt(marketId), tokenAmount, minUsdcOut],
         });
       }
     } catch (error) {

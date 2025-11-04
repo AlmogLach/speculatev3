@@ -24,15 +24,16 @@ export default function AdminManager() {
     checkAdminStatus();
   }, [address]);
 
-  // Read current primary admin
-  const { data: primaryAdminData } = useReadContract({
+  // Read current admin role holders (SpeculateCore uses AccessControl)
+  // We can't easily enumerate, but we can check if the deployer/admin address has the role
+  const DEFAULT_ADMIN_ROLE = '0x0000000000000000000000000000000000000000000000000000000000000000';
+  
+  const { data: deployerHasRole } = useReadContract({
     address: addresses.core,
     abi: coreAbi,
-    functionName: 'admin',
-    args: [],
+    functionName: 'hasRole',
+    args: [DEFAULT_ADMIN_ROLE as `0x${string}`, addresses.admin],
   });
-  
-  const primaryAdmin = primaryAdminData as `0x${string}` | undefined;
 
   // Write contract for adding admin
   const { 
@@ -58,22 +59,20 @@ export default function AdminManager() {
     hash: removeHash 
   });
 
-  // Load current admins
+  // Load current admins (for SpeculateCore, we can only check specific addresses)
   useEffect(() => {
     const loadAdmins = async () => {
-      if (!primaryAdmin) return;
-      
       setLoading(true);
       try {
         const adminsList: string[] = [];
         
-        // Add primary admin
-        if (primaryAdmin) {
-          adminsList.push((primaryAdmin as string).toLowerCase());
+        // Add deployer/admin if they have the role
+        if (deployerHasRole) {
+          adminsList.push(addresses.admin.toLowerCase());
         }
         
-        // Note: We can't easily enumerate all admins from the mapping
-        // So we'll just show the primary admin and note that others exist
+        // Note: With AccessControl, we can't easily enumerate all admins
+        // Users can check specific addresses via hasRole(DEFAULT_ADMIN_ROLE, address)
         setCurrentAdmins(adminsList);
       } catch (error) {
         console.error('Error loading admins:', error);
@@ -83,7 +82,7 @@ export default function AdminManager() {
     };
     
     loadAdmins();
-  }, [primaryAdmin, isAddSuccess, isRemoveSuccess]);
+  }, [deployerHasRole, isAddSuccess, isRemoveSuccess]);
 
   // Handle add admin success
   useEffect(() => {
@@ -117,11 +116,12 @@ export default function AdminManager() {
     }
 
     try {
+      // Grant DEFAULT_ADMIN_ROLE using AccessControl
       await addAdmin({
         address: addresses.core,
         abi: coreAbi,
-        functionName: 'addAdmin',
-        args: [newAdminAddress as `0x${string}`],
+        functionName: 'grantRole',
+        args: [DEFAULT_ADMIN_ROLE as `0x${string}`, newAdminAddress as `0x${string}`],
       });
     } catch (error: any) {
       console.error('Error adding admin:', error);
@@ -135,11 +135,12 @@ export default function AdminManager() {
     }
 
     try {
+      // Revoke DEFAULT_ADMIN_ROLE using AccessControl
       await removeAdmin({
         address: addresses.core,
         abi: coreAbi,
-        functionName: 'removeAdmin',
-        args: [adminToRemove as `0x${string}`],
+        functionName: 'revokeRole',
+        args: [DEFAULT_ADMIN_ROLE as `0x${string}`, adminToRemove as `0x${string}`],
       });
     } catch (error: any) {
       console.error('Error removing admin:', error);
@@ -161,22 +162,25 @@ export default function AdminManager() {
           <p className="text-sm text-gray-500">Loading admins...</p>
         ) : (
           <div className="space-y-2">
-            {primaryAdmin ? (
-              <div className="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-200">
-                <div>
-                  <p className="text-sm font-medium text-blue-900">
-                    {primaryAdmin.toLowerCase()}
-                  </p>
-                  <p className="text-xs text-blue-600">Primary Admin (cannot be removed)</p>
+            {currentAdmins.length > 0 ? (
+              currentAdmins.map((admin, index) => (
+                <div key={index} className="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-200">
+                  <div>
+                    <p className="text-sm font-medium text-blue-900">
+                      {admin}
+                    </p>
+                    <p className="text-xs text-blue-600">Has DEFAULT_ADMIN_ROLE</p>
+                  </div>
+                  <span className="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-200 rounded">
+                    Admin
+                  </span>
                 </div>
-                <span className="px-2 py-1 text-xs font-semibold text-blue-700 bg-blue-200 rounded">
-                  Primary
-                </span>
-              </div>
-            ) : null}
+              ))
+            ) : (
+              <p className="text-sm text-gray-500">No admins found</p>
+            )}
             <p className="text-xs text-gray-500 mt-2">
-              Note: Additional admins added via addAdmin() are not listed here (mapping enumeration not available).
-              Use the contract directly or check via admins(address) function.
+              Note: With AccessControl, we can't enumerate all admins. Use hasRole(DEFAULT_ADMIN_ROLE, address) to check specific addresses.
             </p>
           </div>
         )}
@@ -238,8 +242,11 @@ export default function AdminManager() {
           To check if an address is an admin, use the contract function:
         </p>
         <code className="block p-2 bg-gray-100 rounded text-xs text-gray-800 break-all">
-          admins(address) returns (bool)
+          hasRole(DEFAULT_ADMIN_ROLE, address) returns (bool)
         </code>
+        <p className="text-xs text-gray-500 mt-2">
+          DEFAULT_ADMIN_ROLE = 0x0000000000000000000000000000000000000000000000000000000000000000
+        </p>
       </div>
     </div>
   );

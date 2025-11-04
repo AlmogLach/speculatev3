@@ -23,7 +23,7 @@
     },
     {
         "type":  "function",
-        "name":  "buy",
+        "name":  "buyYes",
         "inputs":  [
                        {
                            "name":  "id",
@@ -31,22 +31,43 @@
                            "internalType":  "uint256"
                        },
                        {
-                           "name":  "isYes",
-                           "type":  "bool",
-                           "internalType":  "bool"
+                           "name":  "usdcIn",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
                        },
                        {
-                           "name":  "usdcIn",
+                           "name":  "minOut",
                            "type":  "uint256",
                            "internalType":  "uint256"
                        }
                    ],
         "outputs":  [
-                        {
-                            "name":  "tokensOut",
-                            "type":  "uint256",
-                            "internalType":  "uint256"
-                        }
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "buyNo",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "usdcIn",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "minOut",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       }
+                   ],
+        "outputs":  [
+
                     ],
         "stateMutability":  "nonpayable"
     },
@@ -145,11 +166,6 @@
                    ],
         "outputs":  [
                         {
-                            "name":  "usdc",
-                            "type":  "address",
-                            "internalType":  "contract MockUSDC"
-                        },
-                        {
                             "name":  "yes",
                             "type":  "address",
                             "internalType":  "contract PositionToken"
@@ -170,34 +186,49 @@
                             "internalType":  "uint256"
                         },
                         {
-                            "name":  "k",
-                            "type":  "uint256",
-                            "internalType":  "uint256"
-                        },
-                        {
-                            "name":  "virtualYes",
-                            "type":  "uint256",
-                            "internalType":  "uint256"
-                        },
-                        {
-                            "name":  "virtualNo",
-                            "type":  "uint256",
-                            "internalType":  "uint256"
-                        },
-                        {
                             "name":  "usdcVault",
                             "type":  "uint256",
                             "internalType":  "uint256"
                         },
                         {
-                            "name":  "totalPairs",
+                            "name":  "totalPairsUSDC",
                             "type":  "uint256",
                             "internalType":  "uint256"
                         },
                         {
-                            "name":  "feeUSDC",
-                            "type":  "uint256",
-                            "internalType":  "uint256"
+                            "name":  "feeTreasuryBps",
+                            "type":  "uint16",
+                            "internalType":  "uint16"
+                        },
+                        {
+                            "name":  "feeVaultBps",
+                            "type":  "uint16",
+                            "internalType":  "uint16"
+                        },
+                        {
+                            "name":  "feeLpBps",
+                            "type":  "uint16",
+                            "internalType":  "uint16"
+                        },
+                        {
+                            "name":  "maxTradeBps",
+                            "type":  "uint16",
+                            "internalType":  "uint16"
+                        },
+                        {
+                            "name":  "status",
+                            "type":  "uint8",
+                            "internalType":  "enum SpeculateCore.MarketStatus"
+                        },
+                        {
+                            "name":  "exists",
+                            "type":  "bool",
+                            "internalType":  "bool"
+                        },
+                        {
+                            "name":  "sellFees",
+                            "type":  "bool",
+                            "internalType":  "bool"
                         },
                         {
                             "name":  "question",
@@ -205,29 +236,9 @@
                             "internalType":  "string"
                         },
                         {
-                            "name":  "expiry",
-                            "type":  "uint256",
-                            "internalType":  "uint256"
-                        },
-                        {
-                            "name":  "creator",
+                            "name":  "lp",
                             "type":  "address",
                             "internalType":  "address"
-                        },
-                        {
-                            "name":  "feeBps",
-                            "type":  "uint16",
-                            "internalType":  "uint16"
-                        },
-                        {
-                            "name":  "status",
-                            "type":  "uint8",
-                            "internalType":  "enum SpeculateCore.Status"
-                        },
-                        {
-                            "name":  "yesWins",
-                            "type":  "bool",
-                            "internalType":  "bool"
                         }
                     ],
         "stateMutability":  "view"
@@ -249,7 +260,7 @@
     },
     {
         "type":  "function",
-        "name":  "priceNoE18",
+        "name":  "spotPriceNoE6",
         "inputs":  [
                        {
                            "name":  "id",
@@ -268,7 +279,7 @@
     },
     {
         "type":  "function",
-        "name":  "priceYesE18",
+        "name":  "spotPriceYesE6",
         "inputs":  [
                        {
                            "name":  "id",
@@ -317,9 +328,49 @@
                            "name":  "id",
                            "type":  "uint256",
                            "internalType":  "uint256"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "setFees",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
                        },
                        {
-                           "name":  "yesWins",
+                           "name":  "newTreasuryBps",
+                           "type":  "uint16",
+                           "internalType":  "uint16"
+                       },
+                       {
+                           "name":  "newVaultBps",
+                           "type":  "uint16",
+                           "internalType":  "uint16"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "setSellFees",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "enabled",
                            "type":  "bool",
                            "internalType":  "bool"
                        }
@@ -331,7 +382,7 @@
     },
     {
         "type":  "function",
-        "name":  "sell",
+        "name":  "setAllFees",
         "inputs":  [
                        {
                            "name":  "id",
@@ -339,22 +390,73 @@
                            "internalType":  "uint256"
                        },
                        {
-                           "name":  "isYes",
-                           "type":  "bool",
-                           "internalType":  "bool"
+                           "name":  "treasuryBps",
+                           "type":  "uint16",
+                           "internalType":  "uint16"
+                       },
+                       {
+                           "name":  "vaultBps",
+                           "type":  "uint16",
+                           "internalType":  "uint16"
+                       },
+                       {
+                           "name":  "lpBps",
+                           "type":  "uint16",
+                           "internalType":  "uint16"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "sellYes",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
                        },
                        {
                            "name":  "tokensIn",
                            "type":  "uint256",
                            "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "minUsdcOut",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
                        }
                    ],
         "outputs":  [
-                        {
-                            "name":  "usdcOut",
-                            "type":  "uint256",
-                            "internalType":  "uint256"
-                        }
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "sellNo",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "tokensIn",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "minUsdcOut",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       }
+                   ],
+        "outputs":  [
+
                     ],
         "stateMutability":  "nonpayable"
     },

@@ -104,9 +104,49 @@ export default function MarketDetailPage() {
                   <span className="font-medium">{market.usdcVault ? formatUnits(market.usdcVault as bigint, 6) : '0'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-600">Accumulated Fees:</span>
-                  <span className="font-medium">{market.feeUSDC ? formatUnits(market.feeUSDC as bigint, 6) : '0'}</span>
+                  <span className="text-gray-600">Total Pairs (USDC):</span>
+                  <span className="font-medium">{market.totalPairsUSDC ? formatUnits(market.totalPairsUSDC as bigint, 6) : '0'}</span>
                 </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Fee (Buy):</span>
+                  <span className="font-medium">
+                    {market.feeTreasuryBps && market.feeVaultBps && market.feeLpBps
+                      ? `${(Number(market.feeTreasuryBps) + Number(market.feeVaultBps) + Number(market.feeLpBps)) / 100}%`
+                      : market.feeBps ? `${Number(market.feeBps) / 100}%` : '0%'}
+                  </span>
+                </div>
+                {market.feeTreasuryBps && (
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>├─ Treasury:</span>
+                    <span>{Number(market.feeTreasuryBps) / 100}%</span>
+                  </div>
+                )}
+                {market.feeVaultBps && (
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>├─ Vault Buffer:</span>
+                    <span>{Number(market.feeVaultBps) / 100}%</span>
+                  </div>
+                )}
+                {market.feeLpBps && (
+                  <div className="flex justify-between text-xs text-gray-500">
+                    <span>└─ LP:</span>
+                    <span>{Number(market.feeLpBps) / 100}%</span>
+                  </div>
+                )}
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Fee (Sell):</span>
+                  <span className="font-medium">{market.sellFees ? `${((Number(market.feeTreasuryBps) || 0) + (Number(market.feeVaultBps) || 0) + (Number(market.feeLpBps) || 0)) / 100}%` : '0% (Free)'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-600">Max Trade:</span>
+                  <span className="font-medium">{market.maxTradeBps ? `${Number(market.maxTradeBps) / 100}%` : '0%'}</span>
+                </div>
+                {market.lp && (
+                  <div className="flex justify-between">
+                    <span className="text-gray-600">LP Address:</span>
+                    <span className="font-mono text-xs">{String(market.lp).slice(0, 6)}...{String(market.lp).slice(-4)}</span>
+                  </div>
+                )}
                 <div className="flex justify-between">
                   <span className="text-gray-600">Status:</span>
                   <span className="font-medium capitalize">{['Active', 'Paused', 'Resolved'][Number(market.status)]}</span>

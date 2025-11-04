@@ -1,5 +1,5 @@
 // ABI compatibility layer - handles both wrapped and unwrapped ABIs
-import coreAbiData from './abis/DirectCore.json';
+import coreAbiData from './abis/SpeculateCore.json';
 import usdcAbiData from './abis/MockUSDC.json';
 import positionTokenAbiData from './abis/PositionToken.json';
 

@@ -9,9 +9,14 @@ import { coreAbi, usdcAbi } from '@/lib/abis';
 export default function CreateMarketForm() {
   const { address } = useAccount();
   const [question, setQuestion] = useState('');
-  const [initialPrice, setInitialPrice] = useState('0.5'); // 0.5 = 50% for YES
-  const [expiry, setExpiry] = useState('');
-  const [feeBps, setFeeBps] = useState('200'); // 2% default (200 basis points)
+  const [yesName, setYesName] = useState('');
+  const [yesSymbol, setYesSymbol] = useState('');
+  const [noName, setNoName] = useState('');
+  const [noSymbol, setNoSymbol] = useState('');
+  const [initReserve, setInitReserve] = useState('1000'); // 1000e18 tokens per side
+  const [feeBps, setFeeBps] = useState('300'); // 3% default (300 basis points)
+  const [maxTradeBps, setMaxTradeBps] = useState('500'); // 5% max trade (500 basis points)
+  const [initUsdc, setInitUsdc] = useState('1000'); // 1000 USDC initial liquidity
   const [needsApproval, setNeedsApproval] = useState(false);
   const [isApproving, setIsApproving] = useState(false);
   
@@ -34,21 +39,53 @@ export default function CreateMarketForm() {
   useEffect(() => {
     if (isSuccess && !isApproving) {
       setQuestion('');
-      setInitialPrice('0.5');
-      setExpiry('');
-      setFeeBps('200');
+      setYesName('');
+      setYesSymbol('');
+      setNoName('');
+      setNoSymbol('');
+      setInitReserve('1000');
+      setFeeBps('300');
+      setMaxTradeBps('500');
+      setInitUsdc('1000');
       alert('Market created successfully!');
       window.location.reload();
     }
   }, [isSuccess, isApproving]);
 
-  // DirectCore doesn't require initial liquidity deposit
-  // Markets start with 0 vault and users add liquidity through trades
+  // SpeculateCore requires initial liquidity deposit
+  // Check if user has approved enough USDC
+  useEffect(() => {
+    if (address && addresses.core && currentAllowance !== undefined && currentAllowance !== null) {
+      const requiredAmount = parseUnits(initUsdc || '0', 6);
+      setNeedsApproval((currentAllowance as bigint) < requiredAmount);
+    } else {
+      setNeedsApproval(false);
+    }
+  }, [address, currentAllowance, initUsdc]);
+
+  const handleApprove = async () => {
+    if (!address || !addresses.core) return;
+    
+    setIsApproving(true);
+    try {
+      const amount = parseUnits(initUsdc || '1000', 6);
+      await writeContract({
+        address: addresses.usdc,
+        abi: usdcAbi,
+        functionName: 'approve',
+        args: [addresses.core, amount],
+      });
+    } catch (error: any) {
+      console.error('Error approving USDC:', error);
+      alert(`Failed to approve USDC: ${error?.message || 'Unknown error'}`);
+      setIsApproving(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!question || !initialPrice || !expiry || !feeBps) {
+    if (!question || !yesName || !yesSymbol || !noName || !noSymbol || !initReserve || !feeBps || !maxTradeBps || !initUsdc) {
       alert('Please fill in all fields');
       return;
     }
@@ -58,43 +95,54 @@ export default function CreateMarketForm() {
       return;
     }
 
-    // Validate initial price (0.01 to 0.99)
-    const price = parseFloat(initialPrice);
-    if (price <= 0.01 || price >= 0.99) {
-      alert('Initial price must be between 0.01 and 0.99 (1% to 99%)');
-      return;
-    }
-
-    // Validate fee (0.1% to 10%)
+    // Validate fee (0% to 10%)
     const fee = parseInt(feeBps);
-    if (fee < 10 || fee > 1000) {
-      alert('Fee must be between 10 (0.1%) and 1000 (10%) basis points');
+    if (fee < 0 || fee > 1000) {
+      alert('Fee must be between 0 and 1000 (0% to 10%) basis points');
       return;
     }
 
-    if (!addresses.core || addresses.core === '0x0000000000000000000000000000000000000000') {
-      alert('Core contract address not configured');
+    // Validate max trade (0.1% to 100%)
+    const maxTrade = parseInt(maxTradeBps);
+    if (maxTrade < 10 || maxTrade > 10000) {
+      alert('Max trade must be between 10 (0.1%) and 10000 (100%) basis points');
       return;
     }
 
-    if (!addresses.usdc || addresses.usdc === '0x0000000000000000000000000000000000000000') {
-      alert('USDC address not configured');
+    // Validate initial USDC (minimum 1 USDC)
+    const initUsdcAmount = parseFloat(initUsdc);
+    if (initUsdcAmount < 1) {
+      alert('Initial USDC must be at least 1 USDC');
+      return;
+    }
+
+    // Validate initial reserve (minimum 1e18)
+    const initReserveAmount = parseFloat(initReserve);
+    if (initReserveAmount < 1) {
+      alert('Initial reserve must be at least 1 token');
+      return;
+    }
+
+    if (needsApproval) {
+      alert('Please approve USDC first');
       return;
     }
 
     try {
-      const expiryTimestamp = BigInt(Math.floor(new Date(expiry).getTime() / 1000));
-      // Convert price (0.5) to E18 (0.5e18 = 500000000000000000)
-      const initialPriceE18 = BigInt(Math.floor(price * 1e18));
+      const initReserveE18 = parseUnits(initReserve, 18);
+      const initUsdcE6 = parseUnits(initUsdc, 6);
 
       console.log('Creating market:', {
         coreAddress: addresses.core,
-        usdcAddress: addresses.usdc,
         question,
-        initialPrice: price,
-        initialPriceE18: initialPriceE18.toString(),
+        yesName,
+        yesSymbol,
+        noName,
+        noSymbol,
+        initReserveE18: initReserveE18.toString(),
         feeBps: fee,
-        expiry: expiryTimestamp.toString(),
+        maxTradeBps: maxTrade,
+        initUsdc: initUsdcE6.toString(),
       });
 
       const result = await writeContract({
@@ -102,11 +150,15 @@ export default function CreateMarketForm() {
         abi: coreAbi,
         functionName: 'createMarket',
         args: [
-          addresses.usdc,
           question,
-          expiryTimestamp,
-          fee as number, // feeBps (basis points)
-          initialPriceE18, // initialPriceYesE18
+          yesName,
+          yesSymbol,
+          noName,
+          noSymbol,
+          initReserveE18,
+          fee as number,
+          maxTrade as number,
+          initUsdcE6,
         ],
       });
 
@@ -141,60 +193,159 @@ export default function CreateMarketForm() {
         />
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Initial Price (YES probability, 0.01 to 0.99)
-        </label>
-        <input
-          type="number"
-          value={initialPrice}
-          onChange={(e) => setInitialPrice(e.target.value)}
-          min="0.01"
-          max="0.99"
-          step="0.01"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          placeholder="0.5"
-          required
-        />
-        <p className="mt-1 text-xs text-gray-500">0.5 = 50% YES / 50% NO</p>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            YES Token Name
+          </label>
+          <input
+            type="text"
+            value={yesName}
+            onChange={(e) => setYesName(e.target.value)}
+            placeholder="BTC100K YES"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            YES Token Symbol
+          </label>
+          <input
+            type="text"
+            value={yesSymbol}
+            onChange={(e) => setYesSymbol(e.target.value)}
+            placeholder="BTC100K-YES"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            required
+          />
+        </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Fee Rate (basis points, 10-1000)
-        </label>
-        <input
-          type="number"
-          value={feeBps}
-          onChange={(e) => setFeeBps(e.target.value)}
-          min="10"
-          max="1000"
-          step="10"
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          placeholder="200"
-          required
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          {feeBps ? `${(parseInt(feeBps) / 100).toFixed(2)}%` : '0%'} fee per trade (100 = 1%, 200 = 2%, etc.)
-        </p>
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            NO Token Name
+          </label>
+          <input
+            type="text"
+            value={noName}
+            onChange={(e) => setNoName(e.target.value)}
+            placeholder="BTC100K NO"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            required
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            NO Token Symbol
+          </label>
+          <input
+            type="text"
+            value={noSymbol}
+            onChange={(e) => setNoSymbol(e.target.value)}
+            placeholder="BTC100K-NO"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            required
+          />
+        </div>
       </div>
 
-      <div>
-        <label className="block text-sm font-medium text-gray-700 mb-2">
-          Expiry Date
-        </label>
-        <input
-          type="datetime-local"
-          value={expiry}
-          onChange={(e) => setExpiry(e.target.value)}
-          className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
-          required
-        />
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Initial Reserve (tokens per side)
+          </label>
+          <input
+            type="number"
+            value={initReserve}
+            onChange={(e) => setInitReserve(e.target.value)}
+            min="1"
+            step="1"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="1000"
+            required
+          />
+          <p className="mt-1 text-xs text-gray-500">Amount in tokens (e.g., 1000 = 1000e18)</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Initial USDC Liquidity
+          </label>
+          <input
+            type="number"
+            value={initUsdc}
+            onChange={(e) => setInitUsdc(e.target.value)}
+            min="1"
+            step="1"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="1000"
+            required
+          />
+          <p className="mt-1 text-xs text-gray-500">Amount in USDC (minimum 1 USDC)</p>
+        </div>
       </div>
+
+      <div className="grid grid-cols-2 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Fee Rate (basis points, 0-1000)
+          </label>
+          <input
+            type="number"
+            value={feeBps}
+            onChange={(e) => setFeeBps(e.target.value)}
+            min="0"
+            max="1000"
+            step="10"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="300"
+            required
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            {feeBps ? `${(parseInt(feeBps) / 100).toFixed(2)}%` : '0%'} fee per trade (300 = 3%)
+          </p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-2">
+            Max Trade (basis points, 10-10000)
+          </label>
+          <input
+            type="number"
+            value={maxTradeBps}
+            onChange={(e) => setMaxTradeBps(e.target.value)}
+            min="10"
+            max="10000"
+            step="10"
+            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm"
+            placeholder="500"
+            required
+          />
+          <p className="mt-1 text-xs text-gray-500">
+            {maxTradeBps ? `${(parseInt(maxTradeBps) / 100).toFixed(2)}%` : '0%'} of pool per trade (500 = 5%)
+          </p>
+        </div>
+      </div>
+
+      {needsApproval && (
+        <div className="p-4 bg-yellow-50 rounded-md border border-yellow-200">
+          <p className="text-sm text-yellow-800 mb-2">
+            You need to approve USDC before creating the market.
+          </p>
+          <button
+            type="button"
+            onClick={handleApprove}
+            disabled={isApproving || isPending || isConfirming}
+            className="w-full rounded-md bg-yellow-600 px-4 py-2 text-sm font-semibold text-white hover:bg-yellow-500 disabled:opacity-50"
+          >
+            {isApproving ? 'Approving...' : `Approve ${initUsdc} USDC`}
+          </button>
+        </div>
+      )}
 
       <button
         type="submit"
-        disabled={isPending || isConfirming || !address}
+        disabled={isPending || isConfirming || !address || needsApproval}
         className="w-full rounded-md bg-green-600 px-4 py-3 text-sm font-semibold text-white hover:bg-green-500 disabled:opacity-50"
       >
         {(isPending || isConfirming) ? 'Creating Market...' : 'Create Market'}

@@ -5,7 +5,6 @@ import { useAccount } from 'wagmi';
 import CreateMarketForm from '@/components/CreateMarketForm';
 import AdminMarketManager from '@/components/AdminMarketManager';
 import MintUsdcForm from '@/components/MintUsdcForm';
-import SensitivityManager from '@/components/SensitivityManager';
 import AdminManager from '@/components/AdminManager';
 import Header from '@/components/Header';
 import { getMarketCount, getMarket, isAdmin as checkIsAdmin } from '@/lib/hooks';
@@ -96,15 +95,10 @@ export default function AdminPage() {
           <MintUsdcForm />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 mb-8">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Create Market</h2>
             <CreateMarketForm />
-          </div>
-          
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 mb-4">Price Sensitivity</h2>
-            <SensitivityManager />
           </div>
         </div>
 
