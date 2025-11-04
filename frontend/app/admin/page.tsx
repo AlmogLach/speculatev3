@@ -6,6 +6,7 @@ import CreateMarketForm from '@/components/CreateMarketForm';
 import AdminMarketManager from '@/components/AdminMarketManager';
 import MintUsdcForm from '@/components/MintUsdcForm';
 import AdminManager from '@/components/AdminManager';
+import USDCMinterManager from '@/components/USDCMinterManager';
 import Header from '@/components/Header';
 import { getMarketCount, getMarket, isAdmin as checkIsAdmin } from '@/lib/hooks';
 import { addresses } from '@/lib/contracts';
@@ -102,10 +103,14 @@ export default function AdminPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 mb-8">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Admin Management</h2>
             <AdminManager />
+          </div>
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">USDC Minter Management</h2>
+            <USDCMinterManager />
           </div>
         </div>
 

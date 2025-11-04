@@ -36,6 +36,10 @@ contract DeploySpeculateCore is Script {
         console.log("Deployer has MARKET_CREATOR_ROLE:", core.hasRole(core.MARKET_CREATOR_ROLE(), deployer));
         console.log("Deployer has DEFAULT_ADMIN_ROLE:", core.hasRole(core.DEFAULT_ADMIN_ROLE(), deployer));
 
+        // Set SpeculateCore address on MockUSDC so admins can mint
+        usdc.setSpeculateCore(address(core));
+        console.log("Set SpeculateCore address on MockUSDC");
+
         // Mint some USDC to deployer for testing
         uint256 testAmount = 10000 * 1e6; // 10,000 USDC
         usdc.mint(deployer, testAmount);
