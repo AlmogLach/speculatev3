@@ -10,6 +10,7 @@ export async function getMarketCount(): Promise<bigint> {
     address: addresses.core,
     abi: coreAbi,
     functionName: 'marketCount',
+    args: [],
   });
   return result as bigint;
 }
