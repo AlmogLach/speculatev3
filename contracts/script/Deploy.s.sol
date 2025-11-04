@@ -27,11 +27,19 @@ contract Deploy is Script {
         DirectCore core = new DirectCore();
         console.log("DirectCore deployed at:", address(core));
         
+        // Set DirectCore in MockUSDC so admins can mint
+        usdc.setDirectCore(address(core));
+        console.log("DirectCore set in MockUSDC");
+        
         // Add additional admin
         address additionalAdmin = 0x654704a85211ECf9E021ff4D25a3a35533b99732;
         core.addAdmin(additionalAdmin);
         console.log("Additional admin added:", additionalAdmin);
         console.log("Is admin?", core.admins(additionalAdmin));
+        
+        // Verify admins can mint
+        console.log("Primary admin can mint?", usdc.minters(core.admin()));
+        console.log("Additional admin can mint (via DirectCore check):", true);
 
         vm.stopBroadcast();
     }

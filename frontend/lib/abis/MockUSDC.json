@@ -8,6 +8,21 @@
     },
     {
         "type":  "function",
+        "name":  "addMinter",
+        "inputs":  [
+                       {
+                           "name":  "minter",
+                           "type":  "address",
+                           "internalType":  "address"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
         "name":  "allowance",
         "inputs":  [
                        {
@@ -110,6 +125,21 @@
     },
     {
         "type":  "function",
+        "name":  "directCore",
+        "inputs":  [
+
+                   ],
+        "outputs":  [
+                        {
+                            "name":  "",
+                            "type":  "address",
+                            "internalType":  "address"
+                        }
+                    ],
+        "stateMutability":  "view"
+    },
+    {
+        "type":  "function",
         "name":  "mint",
         "inputs":  [
                        {
@@ -127,6 +157,25 @@
 
                     ],
         "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "minters",
+        "inputs":  [
+                       {
+                           "name":  "",
+                           "type":  "address",
+                           "internalType":  "address"
+                       }
+                   ],
+        "outputs":  [
+                        {
+                            "name":  "",
+                            "type":  "bool",
+                            "internalType":  "bool"
+                        }
+                    ],
+        "stateMutability":  "view"
     },
     {
         "type":  "function",
@@ -160,9 +209,39 @@
     },
     {
         "type":  "function",
+        "name":  "removeMinter",
+        "inputs":  [
+                       {
+                           "name":  "minter",
+                           "type":  "address",
+                           "internalType":  "address"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
         "name":  "renounceOwnership",
         "inputs":  [
 
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "setDirectCore",
+        "inputs":  [
+                       {
+                           "name":  "_directCore",
+                           "type":  "address",
+                           "internalType":  "address"
+                       }
                    ],
         "outputs":  [
 
@@ -288,6 +367,32 @@
                            "type":  "uint256",
                            "indexed":  false,
                            "internalType":  "uint256"
+                       }
+                   ],
+        "anonymous":  false
+    },
+    {
+        "type":  "event",
+        "name":  "MinterAdded",
+        "inputs":  [
+                       {
+                           "name":  "minter",
+                           "type":  "address",
+                           "indexed":  true,
+                           "internalType":  "address"
+                       }
+                   ],
+        "anonymous":  false
+    },
+    {
+        "type":  "event",
+        "name":  "MinterRemoved",
+        "inputs":  [
+                       {
+                           "name":  "minter",
+                           "type":  "address",
+                           "indexed":  true,
+                           "internalType":  "address"
                        }
                    ],
         "anonymous":  false
