@@ -250,6 +250,36 @@
     },
     {
         "type":  "function",
+        "name":  "setSpeculateCore",
+        "inputs":  [
+                       {
+                           "name":  "_speculateCore",
+                           "type":  "address",
+                           "internalType":  "address"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "speculateCore",
+        "inputs":  [
+
+                   ],
+        "outputs":  [
+                        {
+                            "name":  "",
+                            "type":  "address",
+                            "internalType":  "address"
+                        }
+                    ],
+        "stateMutability":  "view"
+    },
+    {
+        "type":  "function",
         "name":  "symbol",
         "inputs":  [
 
