@@ -180,7 +180,7 @@ export default function AdminManager() {
               <p className="text-sm text-gray-500">No admins found</p>
             )}
             <p className="text-xs text-gray-500 mt-2">
-              Note: With AccessControl, we can't enumerate all admins. Use hasRole(DEFAULT_ADMIN_ROLE, address) to check specific addresses.
+              Note: With AccessControl, we can&apos;t enumerate all admins. Use hasRole(DEFAULT_ADMIN_ROLE, address) to check specific addresses.
             </p>
           </div>
         )}
