@@ -105,22 +105,32 @@
         "name":  "createMarket",
         "inputs":  [
                        {
-                           "name":  "usdc",
-                           "type":  "address",
-                           "internalType":  "address"
-                       },
-                       {
-                           "name":  "initialLiquidity",
-                           "type":  "uint256",
-                           "internalType":  "uint256"
-                       },
-                       {
                            "name":  "question",
                            "type":  "string",
                            "internalType":  "string"
                        },
                        {
-                           "name":  "expiry",
+                           "name":  "yesName",
+                           "type":  "string",
+                           "internalType":  "string"
+                       },
+                       {
+                           "name":  "yesSymbol",
+                           "type":  "string",
+                           "internalType":  "string"
+                       },
+                       {
+                           "name":  "noName",
+                           "type":  "string",
+                           "internalType":  "string"
+                       },
+                       {
+                           "name":  "noSymbol",
+                           "type":  "string",
+                           "internalType":  "string"
+                       },
+                       {
+                           "name":  "initReserveE18",
                            "type":  "uint256",
                            "internalType":  "uint256"
                        },
@@ -128,6 +138,16 @@
                            "name":  "feeBps",
                            "type":  "uint16",
                            "internalType":  "uint16"
+                       },
+                       {
+                           "name":  "maxTradeBps",
+                           "type":  "uint16",
+                           "internalType":  "uint16"
+                       },
+                       {
+                           "name":  "initUsdc",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
                        }
                    ],
         "outputs":  [
