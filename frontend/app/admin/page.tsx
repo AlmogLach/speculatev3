@@ -6,6 +6,7 @@ import CreateMarketForm from '@/components/CreateMarketForm';
 import AdminMarketManager from '@/components/AdminMarketManager';
 import MintUsdcForm from '@/components/MintUsdcForm';
 import SensitivityManager from '@/components/SensitivityManager';
+import AdminManager from '@/components/AdminManager';
 import Header from '@/components/Header';
 import { getMarketCount, getMarket, isAdmin as checkIsAdmin } from '@/lib/hooks';
 import { addresses } from '@/lib/contracts';
@@ -104,6 +105,13 @@ export default function AdminPage() {
           <div>
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Price Sensitivity</h2>
             <SensitivityManager />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 mb-8">
+          <div>
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">Admin Management</h2>
+            <AdminManager />
           </div>
         </div>
 
