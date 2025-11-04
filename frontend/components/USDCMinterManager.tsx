@@ -110,7 +110,7 @@ export default function USDCMinterManager() {
 
   // Check if a specific address is a minter
   const MinterChecker = ({ addressToCheck }: { addressToCheck: string }) => {
-    const { data: isMinter, refetch } = useReadContract({
+    const { data: isMinterData } = useReadContract({
       address: addresses.usdc,
       abi: usdcAbi,
       functionName: 'minters',
@@ -120,6 +120,8 @@ export default function USDCMinterManager() {
       },
     });
 
+    const isMinter: boolean = Boolean(isMinterData);
+
     return (
       <div className="flex items-center justify-between p-3 bg-purple-50 rounded-md border border-purple-200 mb-2">
         <div>
@@ -128,7 +130,7 @@ export default function USDCMinterManager() {
             {isMinter ? 'Has minting permissions' : 'No minting permissions'}
           </p>
         </div>
-        {isMinter && (
+        {isMinter ? (
           <button
             onClick={() => handleRemoveMinter(addressToCheck)}
             disabled={isRemoving || isConfirmingRemove}
@@ -136,7 +138,7 @@ export default function USDCMinterManager() {
           >
             Remove
           </button>
-        )}
+        ) : null}
       </div>
     );
   };
