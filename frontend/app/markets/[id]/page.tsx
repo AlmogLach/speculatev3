@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useParams } from 'next/navigation';
 import { useAccount } from 'wagmi';
 import TradingCard from '@/components/TradingCard';
@@ -17,13 +17,8 @@ export default function MarketDetailPage() {
   const [priceNo, setPriceNo] = useState('0');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    if (marketId) {
-      loadMarket();
-    }
-  }, [marketId]);
-
-  const loadMarket = async () => {
+  const loadMarket = useCallback(async () => {
+    if (!marketId) return;
     try {
       const data = await getMarket(BigInt(marketId));
       const yesPrice = await getPriceYes(BigInt(marketId));
@@ -37,7 +32,13 @@ export default function MarketDetailPage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [marketId]);
+
+  useEffect(() => {
+    if (marketId) {
+      loadMarket();
+    }
+  }, [marketId, loadMarket]);
 
   if (loading) {
     return (

@@ -473,7 +473,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
                 <li>• <strong>Selling {side === 'yes' ? 'YES' : 'NO'} tokens:</strong> Returns USDC directly</li>
                 <li>• <strong>Mechanism:</strong> CPMM swap → mint pairs → burn pairs → receive USDC</li>
                 <li>• <strong>You receive:</strong> USDC (minus ~1% fee)</li>
-                <li>• <strong>Note:</strong> You don't need equal YES + NO pairs - selling returns USDC directly!</li>
+                <li>• <strong>Note:</strong> You don&apos;t need equal YES + NO pairs - selling returns USDC directly!</li>
               </ul>
             </div>
           )}

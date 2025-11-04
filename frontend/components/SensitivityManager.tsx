@@ -203,7 +203,7 @@ export default function SensitivityManager() {
         </button>
         {isReadError && (
           <p className="text-xs text-gray-500 mt-2 text-center">
-            Update disabled - contract doesn't support sensitivity control
+            Update disabled - contract doesn&apos;t support sensitivity control
           </p>
         )}
       </div>
@@ -222,7 +222,7 @@ export default function SensitivityManager() {
             <strong>Error:</strong> {writeError.message}
           </p>
           <p className="text-xs text-red-600 mt-1">
-            Make sure you're connected as admin and have sufficient gas.
+            Make sure you&apos;re connected as admin and have sufficient gas.
           </p>
         </div>
       )}
