@@ -25,12 +25,14 @@ export default function AdminManager() {
   }, [address]);
 
   // Read current primary admin
-  const { data: primaryAdmin } = useReadContract({
+  const { data: primaryAdminData } = useReadContract({
     address: addresses.core,
     abi: coreAbi,
     functionName: 'admin',
     args: [],
   });
+  
+  const primaryAdmin = primaryAdminData as `0x${string}` | undefined;
 
   // Write contract for adding admin
   const { 
@@ -159,11 +161,11 @@ export default function AdminManager() {
           <p className="text-sm text-gray-500">Loading admins...</p>
         ) : (
           <div className="space-y-2">
-            {primaryAdmin && (
+            {primaryAdmin ? (
               <div className="flex items-center justify-between p-3 bg-blue-50 rounded-md border border-blue-200">
                 <div>
                   <p className="text-sm font-medium text-blue-900">
-                    {(primaryAdmin as string).toLowerCase()}
+                    {primaryAdmin.toLowerCase()}
                   </p>
                   <p className="text-xs text-blue-600">Primary Admin (cannot be removed)</p>
                 </div>
@@ -171,7 +173,7 @@ export default function AdminManager() {
                   Primary
                 </span>
               </div>
-            )}
+            ) : null}
             <p className="text-xs text-gray-500 mt-2">
               Note: Additional admins added via addAdmin() are not listed here (mapping enumeration not available).
               Use the contract directly or check via admins(address) function.
