@@ -356,4 +356,33 @@ contract SpeculateCore is AccessControl, ReentrancyGuard {
         require(markets[id].status == MarketStatus.Active || markets[id].status == MarketStatus.Paused, "already resolved");
         markets[id].status = MarketStatus.Resolved;
     }
+
+    /**
+     * @notice Grant MINTER_ROLE on a market's PositionTokens to an address
+     * @dev Allows admins to grant minting permissions for emergency or administrative purposes
+     * @param id Market ID
+     * @param to Address to grant MINTER_ROLE to
+     * @param isYes If true, grant on YES token; if false, grant on NO token
+     */
+    function grantMinterRole(uint256 id, address to, bool isYes) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(markets[id].exists, "market not found");
+        require(to != address(0), "zero address");
+        
+        PositionToken token = isYes ? markets[id].yes : markets[id].no;
+        token.grantRole(token.MINTER_ROLE(), to);
+    }
+
+    /**
+     * @notice Grant MINTER_ROLE on both PositionTokens to an address
+     * @dev Convenience function to grant minting permissions on both YES and NO tokens
+     * @param id Market ID
+     * @param to Address to grant MINTER_ROLE to
+     */
+    function grantMinterRoleBoth(uint256 id, address to) external onlyRole(DEFAULT_ADMIN_ROLE) {
+        require(markets[id].exists, "market not found");
+        require(to != address(0), "zero address");
+        
+        markets[id].yes.grantRole(markets[id].yes.MINTER_ROLE(), to);
+        markets[id].no.grantRole(markets[id].no.MINTER_ROLE(), to);
+    }
 }
