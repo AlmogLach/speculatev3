@@ -2,8 +2,11 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
+import { SearchIcon, SlidersHorizontalIcon } from 'lucide-react';
 import Header from '@/components/Header';
+import { Badge, Button, Card, CardContent, Input } from '@/components/ui';
 import { getMarketCount, getMarket, getPriceYes, getPriceNo } from '@/lib/hooks';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
@@ -13,11 +16,9 @@ import { usdcAbi } from '@/lib/abis';
 // Helper function to format price in cents
 const formatPriceInCents = (price: number): string => {
   const cents = price * 100;
-  // Remove trailing zeros and format
   if (cents >= 100) {
     return `$${cents.toFixed(2)}`;
   }
-  // For values less than 100 cents, show with cent symbol
   const formatted = cents.toFixed(1).replace(/\.0$/, '');
   return `${formatted}¢`;
 };
@@ -151,11 +152,11 @@ export default function MarketsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FAF9FF] relative overflow-hidden">
-      {/* Animated Background */}
+    <div className="min-h-screen bg-[#f5f0ff] relative overflow-hidden">
+      {/* Animated Background - Figma inspired */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div 
-          className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-[#14B8A6]/20 to-purple-400/20 rounded-full blur-3xl"
+          className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-[#14B8A6]/10 to-purple-400/10 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.2, 1],
             rotate: [0, 90, 0],
@@ -167,7 +168,7 @@ export default function MarketsPage() {
           }}
         />
         <motion.div 
-          className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-[#14B8A6]/20 rounded-full blur-3xl"
+          className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-blue-400/10 to-[#14B8A6]/10 rounded-full blur-3xl"
           animate={{
             scale: [1, 1.1, 1],
             rotate: [0, -90, 0],
@@ -183,187 +184,142 @@ export default function MarketsPage() {
 
       <Header />
 
-      <main className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
-        {/* Header Section */}
-        <motion.div 
-          initial={{ y: 30, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6 }}
-          className="mb-12"
-        >
-          <Link href="/" className="inline-flex items-center text-[#14B8A6] text-sm font-semibold mb-4 hover:text-[#0D9488] transition-colors group">
-            <motion.span 
-              className="mr-2 group-hover:-translate-x-1 transition-transform"
-            >
-              ←
-            </motion.span>
-            BACK TO HOME
-          </Link>
-          <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-4 tracking-tight">
-            <span className="bg-gradient-to-r from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent">
-              Turn Conviction Into Capital
-            </span>
+      <main className="relative z-10 mx-auto max-w-7xl px-6 py-16">
+        {/* Header Section - Figma Design */}
+        <div className="mb-12">
+          <div className="flex items-center gap-4 mb-6 translate-y-[-1rem] animate-fade-in opacity-0">
+            <svg className="w-5 h-5 text-[#14B8A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+            <div className="[font-family:'Geist',Helvetica] font-semibold text-[#14B8A6] text-sm tracking-[0.35px] leading-5">
+              BROWSE MARKETS
+            </div>
+          </div>
+          <h1 className="[font-family:'Geist',Helvetica] font-bold text-[#0f0a2e] text-6xl tracking-[0] leading-[60px] mb-6 translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:200ms]">
+            What&apos;s the Market Thinking?
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl">
-            Explore prediction markets across every category. When you know what&apos;s coming, trade it.
+          <p className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-lg tracking-[0] leading-7 mb-8 max-w-[668px] translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:400ms]">
+            Trade what you believe in every market reflects real-time sentiment and liquidity.
           </p>
-        </motion.div>
+        </div>
 
-        {/* Stats Bar */}
+        {/* Stats Banner - Figma Design with Logo Patterns */}
+        <div className="relative overflow-hidden bg-[#ffffffcc] rounded-2xl border-2 border-[#14B8A6] shadow-lg mb-12 translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:600ms]">
+          {/* Left Logo */}
+          <div className="absolute left-0 top-0 w-[182px] h-[155px] pointer-events-none flex items-center justify-center">
+            <Image
+              src="/logo.jpg"
+              alt="SpeculateX Logo"
+              width={182}
+              height={155}
+              className="object-contain w-full h-full"
+              unoptimized
+            />
+          </div>
+
+          {/* Stats Content */}
+          <div className="relative z-10 flex items-center justify-center gap-16 md:gap-24 lg:gap-32 px-8 py-7 flex-wrap min-h-[155px]">
+            {/* Total Volume */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="font-inter text-gray-500 text-[11px] text-center tracking-[0.55px] leading-[17.6px] uppercase">
+                TOTAL VOLUME
+              </div>
+              <div className="font-inter text-[#0a0e17] text-[32px] text-center tracking-[0] leading-[38.4px]">
+                {totalVolume.toFixed(0)} BNB
+              </div>
+              <div className="font-inter font-bold text-[#00d1b2] text-xs text-center tracking-[0] leading-[19.2px]">
+                +12%
+              </div>
+            </div>
+
+            {/* Active Traders */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="font-inter text-gray-500 text-[11px] text-center tracking-[0.55px] leading-[17.6px] uppercase">
+                ACTIVE TRADERS
+              </div>
+              <div className="font-inter text-[#0a0e17] text-[32px] text-center tracking-[0] leading-[38.4px]">
+                {activeTraders}
+              </div>
+              <div className="font-inter font-bold text-[#00d1b2] text-xs text-center tracking-[0] leading-[19.2px]">
+                +18 today
+              </div>
+            </div>
+
+            {/* Live Markets */}
+            <div className="flex flex-col items-center gap-4">
+              <div className="font-inter text-gray-500 text-[11px] text-center tracking-[0.55px] leading-[17.6px] uppercase">
+                LIVE MARKETS
+              </div>
+              <div className="font-inter text-[#0a0e17] text-[32px] text-center tracking-[0] leading-[38.4px]">
+                {liveMarkets}
+              </div>
+              <div className="font-inter font-bold text-[#00d1b2] text-xs text-center tracking-[0] leading-[19.2px]">
+                3 closing
+              </div>
+            </div>
+          </div>
+
+          {/* Right Logo */}
+          <div className="absolute right-0 top-0 w-[189px] h-[155px] pointer-events-none flex items-center justify-center">
+            <Image
+              src="/logo.jpg"
+              alt="SpeculateX Logo"
+              width={189}
+              height={155}
+              className="object-contain w-full h-full"
+              unoptimized
+            />
+          </div>
+        </div>
+
+        {/* Search and Filters - Figma Design */}
         <motion.div 
-          initial={{ y: 50, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12"
-        >
-          <motion.div 
-            whileHover={{ y: -5, scale: 1.02 }}
-            className="relative overflow-hidden bg-gradient-to-br from-[#14B8A6] to-[#0D9488] rounded-2xl p-6 shadow-xl"
-          >
-            <div className="relative z-10 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white/80 mb-1 font-semibold uppercase tracking-wide">Total Volume</p>
-                <motion.p 
-                  key={totalVolume}
-                  initial={{ scale: 1.2, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="text-3xl md:text-4xl font-black text-white"
-                >
-                  ${totalVolume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                </motion.p>
-                <p className="text-xs text-white/70 mt-2 flex items-center">
-                  <svg className="w-4 h-4 mr-1" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                  </svg>
-                  +12% this week
-                </p>
-              </div>
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm"
-              >
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </motion.div>
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
-          </motion.div>
-
-          <motion.div 
-            whileHover={{ y: -5, scale: 1.02 }}
-            className="relative overflow-hidden bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
-          >
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-gray-600 mb-1 font-semibold uppercase tracking-wide">Active Traders</p>
-                <motion.p 
-                  key={activeTraders}
-                  initial={{ scale: 1.2, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="text-3xl md:text-4xl font-black text-gray-900"
-                >
-                  {activeTraders}
-                </motion.p>
-                <p className="text-xs text-gray-500 mt-2 flex items-center">
-                  <svg className="w-4 h-4 mr-1 text-green-500" fill="currentColor" viewBox="0 0 20 20">
-                    <path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-                  </svg>
-                  +18 today
-                </p>
-              </div>
-              <div className="w-16 h-16 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-2xl flex items-center justify-center">
-                <svg className="w-8 h-8 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                </svg>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div 
-            whileHover={{ y: -5, scale: 1.02 }}
-            className="relative overflow-hidden bg-gradient-to-br from-purple-500 to-pink-500 rounded-2xl p-6 shadow-xl"
-          >
-            <div className="relative z-10 flex items-center justify-between">
-              <div>
-                <p className="text-sm text-white/80 mb-1 font-semibold uppercase tracking-wide">Live Markets</p>
-                <motion.p 
-                  key={liveMarkets}
-                  initial={{ scale: 1.2, opacity: 0 }}
-                  animate={{ scale: 1, opacity: 1 }}
-                  className="text-3xl md:text-4xl font-black text-white"
-                >
-                  {liveMarkets}
-                </motion.p>
-                <p className="text-xs text-white/70 mt-2 flex items-center">
-                  <motion.span
-                    animate={{ scale: [1, 1.2, 1] }}
-                    transition={{ duration: 2, repeat: Infinity }}
-                    className="w-2 h-2 bg-white rounded-full mr-2"
-                  />
-                  3 closing soon
-                </p>
-              </div>
-              <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-sm">
-                <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                </svg>
-              </div>
-            </div>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
-          </motion.div>
-        </motion.div>
-
-        {/* Search and Filters */}
-        <motion.div 
-          initial={{ y: 30, opacity: 0 }}
+          initial={{ y: -10, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.4 }}
           className="mb-8"
         >
-          <div className="flex items-center bg-white rounded-xl border-2 border-gray-200 focus-within:border-[#14B8A6] px-5 py-4 mb-6 shadow-lg transition-all">
-            <svg className="w-5 h-5 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-            <input
-              type="text"
-              placeholder="Search markets by keyword..."
-              className="flex-grow bg-transparent outline-none text-gray-800 placeholder-gray-400 text-lg"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-
-          <div className="flex items-center justify-between mb-6">
-            <motion.p 
-              key={filteredMarkets.length}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-sm font-semibold text-gray-600"
+          <div className="flex items-center gap-4 mb-6">
+            <div className="relative flex-1">
+              <SearchIcon className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-[#6b717f99]" />
+              <Input
+                placeholder="Search markets..."
+                className="pl-12 h-12 bg-white rounded-2xl border-[#e5e6ea80] shadow-[0px_1px_2px_#0000000d] [font-family:'Geist',Helvetica] text-sm focus:border-[#14B8A6]"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Button
+              variant="outline"
+              className="h-12 px-6 bg-[#ffffff01] rounded-2xl border-[#e5e6ea80] shadow-[0px_1px_2px_#0000000d] [font-family:'Geist',Helvetica] font-medium text-[#0f0a2e] text-sm hover:bg-white transition-colors"
             >
-              Showing <span className="text-[#14B8A6] text-lg font-bold">{filteredMarkets.length}</span> markets
-            </motion.p>
+              <SlidersHorizontalIcon className="w-4 h-4 mr-2" />
+              More Filters
+            </Button>
           </div>
 
-          <div className="flex flex-wrap gap-3">
+          <div className="mb-6">
+            <p className="[font-family:'Geist',Helvetica] text-sm text-gray-500">
+              <span className="font-medium">Showing </span>
+              <span className="font-semibold text-[#0f0a2e]">{filteredMarkets.length}</span>
+              <span className="font-medium"> markets</span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap gap-3 mb-8">
             {categories.map((category, index) => (
-              <motion.button
+              <Badge
                 key={category}
-                initial={{ scale: 0, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                transition={{ delay: 0.5 + index * 0.05 }}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setActiveCategory(category)}
-                className={`px-5 py-2.5 rounded-full text-sm font-bold transition-all shadow-md ${
+                variant={activeCategory === category ? "default" : "secondary"}
+                className={`h-[42px] px-6 rounded-full cursor-pointer transition-colors ${
                   activeCategory === category
-                    ? 'bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white shadow-lg'
-                    : 'bg-white text-gray-700 hover:bg-gray-50 border border-gray-200'
-                }`}
+                    ? "bg-[#14B8A6] hover:bg-[#0D9488] text-white border-0"
+                    : "bg-[#f0f0f280] hover:bg-[#e5e6ea80] text-[#0e092db2] border border-[#e5e6ea4c]"
+                } [font-family:'Geist',Helvetica] font-medium text-sm`}
+                onClick={() => setActiveCategory(category)}
               >
                 {category}
-              </motion.button>
+              </Badge>
             ))}
           </div>
         </motion.div>
@@ -402,166 +358,207 @@ export default function MarketsPage() {
             </motion.div>
           ) : (
             <AnimatePresence mode="popLayout">
-              <motion.div 
-                layout
-                className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6"
-              >
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {filteredMarkets.map((market, index) => (
                   <motion.div
                     key={market.id}
-                    layout
-                    initial={{ scale: 0.8, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
+                    initial={{ scale: 0.8, opacity: 0, y: 20 }}
+                    animate={{ scale: 1, opacity: 1, y: 0 }}
                     exit={{ scale: 0.8, opacity: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    whileHover={{ y: -10, scale: 1.02 }}
+                    style={{
+                      "--animation-delay": `${400 + index * 100}ms`,
+                    } as React.CSSProperties}
                   >
                     <Link href={`/markets/${market.id}`}>
-                      <div className="group bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:shadow-2xl hover:border-[#14B8A6] transition-all cursor-pointer h-full">
-                        {/* Header */}
-                        <div className="flex items-start justify-between mb-5">
-                          <motion.div 
-                            whileHover={{ rotate: 360 }}
-                            transition={{ duration: 0.5 }}
-                            className="w-14 h-14 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-xl flex items-center justify-center text-3xl border border-[#14B8A6]/20"
-                          >
-                            {getMarketIcon(market.question)}
-                          </motion.div>
-                          <span className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-md ${
-                            market.status === 'LIVE TRADING' 
-                              ? 'bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white' 
-                              : market.status === 'FUNDING'
-                              ? 'bg-gradient-to-r from-green-400 to-green-500 text-white'
-                              : 'bg-gray-100 text-gray-700'
-                          }`}>
-                            {market.status === 'LIVE TRADING' && (
-                              <motion.span
-                                animate={{ scale: [1, 1.2, 1] }}
-                                transition={{ duration: 2, repeat: Infinity }}
-                                className="inline-block w-2 h-2 bg-white rounded-full mr-2"
-                              />
-                            )}
-                            {market.status}
-                          </span>
-                        </div>
-
-                        {/* Question */}
-                        <h3 className="text-lg font-bold text-gray-900 mb-5 line-clamp-2 group-hover:text-[#14B8A6] transition-colors min-h-[3.5rem]">
-                          {market.question}
-                        </h3>
-                        
-                        {/* Yes/No Prices */}
-                        <div className="grid grid-cols-2 gap-3 mb-5">
-                          <motion.div 
-                            whileHover={{ scale: 1.05 }}
-                            className="bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl p-4 border border-green-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
-                          >
-                            <div className="text-xs font-bold text-green-600 mb-2 uppercase tracking-wide">YES</div>
-                            <div className="text-2xl font-black text-green-700">{formatPriceInCents(market.yesPrice)}</div>
-                            <div className="text-xs text-green-600 mt-1 font-semibold">Price</div>
-                          </motion.div>
-                          <motion.div 
-                            whileHover={{ scale: 1.05 }}
-                            className="bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-xl p-4 border border-red-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
-                          >
-                            <div className="text-xs font-bold text-red-600 mb-2 uppercase tracking-wide">NO</div>
-                            <div className="text-2xl font-black text-red-700">{formatPriceInCents(market.noPrice)}</div>
-                            <div className="text-xs text-red-600 mt-1 font-semibold">Price</div>
-                          </motion.div>
-                        </div>
-
-                        {/* Progress Bar */}
-                        <div className="mb-5">
-                          <div className="flex justify-between text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">
-                            <span>Market Sentiment</span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-                            <div className="flex h-full">
+                      <Card className="overflow-hidden border-0 shadow-lg bg-white hover:shadow-2xl transition-all cursor-pointer h-full group">
+                        <CardContent className="p-0">
+                          <div className="group-hover:scale-[1.02] transition-transform duration-300 p-6">
+                            {/* Header */}
+                            <div className="flex items-start justify-between mb-5">
                               <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${market.yesPercent}%` }}
-                                transition={{ duration: 1, delay: index * 0.05 }}
-                                className="bg-gradient-to-r from-green-400 to-green-500"
-                              />
-                              <motion.div 
-                                initial={{ width: 0 }}
-                                animate={{ width: `${market.noPercent}%` }}
-                                transition={{ duration: 1, delay: index * 0.05 }}
-                                className="bg-gradient-to-r from-red-400 to-red-500"
-                              />
+                                whileHover={{ rotate: 360 }}
+                                transition={{ duration: 0.5 }}
+                                className="w-14 h-14 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-xl flex items-center justify-center text-3xl border border-[#14B8A6]/20"
+                              >
+                                {getMarketIcon(market.question)}
+                              </motion.div>
+                              <Badge
+                                variant={market.status === 'LIVE TRADING' ? 'default' : market.status === 'FUNDING' ? 'secondary' : 'outline'}
+                                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-md ${
+                                  market.status === 'LIVE TRADING' 
+                                    ? 'bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white border-0' 
+                                    : market.status === 'FUNDING'
+                                    ? 'bg-gradient-to-r from-green-400 to-green-500 text-white border-0'
+                                    : 'bg-gray-100 text-gray-700'
+                                }`}
+                              >
+                                {market.status === 'LIVE TRADING' && (
+                                  <motion.span
+                                    animate={{ scale: [1, 1.2, 1] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="inline-block w-2 h-2 bg-white rounded-full mr-2"
+                                  />
+                                )}
+                                {market.status}
+                              </Badge>
                             </div>
-                          </div>
-                        </div>
 
-                        {/* Volume */}
-                        <div className="pt-4 border-t border-gray-100">
-                          <div className="flex items-center justify-between text-sm">
-                            <div>
-                              <span className="font-bold text-gray-500 uppercase tracking-wide text-xs">Volume</span>
-                              <div className="text-lg font-black text-gray-900 mt-1">
-                                ${market.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {/* Question */}
+                            <h3 className="text-lg font-bold text-gray-900 mb-5 line-clamp-2 group-hover:text-[#14B8A6] transition-colors min-h-[3.5rem]">
+                              {market.question}
+                            </h3>
+                            
+                            {/* Yes/No Prices */}
+                            <div className="grid grid-cols-2 gap-3 mb-5">
+                              <motion.div 
+                                whileHover={{ scale: 1.05 }}
+                                className="bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl p-4 border border-green-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
+                              >
+                                <div className="text-xs font-bold text-green-600 mb-2 uppercase tracking-wide">YES</div>
+                                <div className="text-2xl font-black text-green-700">{formatPriceInCents(market.yesPrice)}</div>
+                                <div className="text-xs text-green-600 mt-1 font-semibold">Price</div>
+                              </motion.div>
+                              <motion.div 
+                                whileHover={{ scale: 1.05 }}
+                                className="bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-xl p-4 border border-red-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
+                              >
+                                <div className="text-xs font-bold text-red-600 mb-2 uppercase tracking-wide">NO</div>
+                                <div className="text-2xl font-black text-red-700">{formatPriceInCents(market.noPrice)}</div>
+                                <div className="text-xs text-red-600 mt-1 font-semibold">Price</div>
+                              </motion.div>
+                            </div>
+
+                            {/* Progress Bar */}
+                            <div className="mb-5">
+                              <div className="flex justify-between text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">
+                                <span>Market Sentiment</span>
+                              </div>
+                              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
+                                <div className="flex h-full">
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${market.yesPercent}%` }}
+                                    transition={{ duration: 1, delay: index * 0.05 }}
+                                    className="bg-gradient-to-r from-green-400 to-green-500"
+                                  />
+                                  <motion.div 
+                                    initial={{ width: 0 }}
+                                    animate={{ width: `${market.noPercent}%` }}
+                                    transition={{ duration: 1, delay: index * 0.05 }}
+                                    className="bg-gradient-to-r from-red-400 to-red-500"
+                                  />
+                                </div>
                               </div>
                             </div>
-                            <motion.div
-                              whileHover={{ scale: 1.1 }}
-                              className="w-10 h-10 bg-[#14B8A6]/10 rounded-lg flex items-center justify-center group-hover:bg-[#14B8A6] transition-colors"
-                            >
-                              <svg className="w-5 h-5 text-[#14B8A6] group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                              </svg>
-                            </motion.div>
+
+                            {/* Volume */}
+                            <div className="pt-4 border-t border-gray-100">
+                              <div className="flex items-center justify-between text-sm">
+                                <div>
+                                  <span className="font-bold text-gray-500 uppercase tracking-wide text-xs">Volume</span>
+                                  <div className="text-lg font-black text-gray-900 mt-1">
+                                    ${market.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                  </div>
+                                </div>
+                                <motion.div
+                                  whileHover={{ scale: 1.1 }}
+                                  className="w-10 h-10 bg-[#14B8A6]/10 rounded-lg flex items-center justify-center group-hover:bg-[#14B8A6] transition-colors"
+                                >
+                                  <svg className="w-5 h-5 text-[#14B8A6] group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                                  </svg>
+                                </motion.div>
+                              </div>
+                            </div>
                           </div>
-                        </div>
-                      </div>
+                        </CardContent>
+                      </Card>
                     </Link>
                   </motion.div>
                 ))}
-              </motion.div>
+              </div>
             </AnimatePresence>
           )}
         </div>
       </main>
 
       {/* Footer */}
-      <footer className="relative z-10 bg-white border-t border-gray-200 py-12 mt-20">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="font-bold text-gray-900 mb-4">Product</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="/markets" className="hover:text-[#14B8A6] transition-colors">Markets</Link></li>
-                <li><Link href="/admin" className="hover:text-[#14B8A6] transition-colors">Create Market</Link></li>
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">API</a></li>
-              </ul>
+      <footer className="w-full bg-[#fffefe66] border-t border-border mt-20">
+        <div className="max-w-[1280px] mx-auto px-20 py-20">
+          <div className="grid grid-cols-4 gap-8 mb-16">
+            <div className="flex flex-col gap-6">
+              <h3 className="[font-family:'Geist',Helvetica] font-semibold text-[#0f0a2e] text-base leading-6">
+                Product
+              </h3>
+              <div className="flex flex-col gap-[18px]">
+                <Link href="/markets" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Markets
+                </Link>
+                <Link href="/admin" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Create Market
+                </Link>
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  API
+                </a>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-gray-900 mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">Documentation</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">FAQ</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">Blog</a></li>
-              </ul>
+            <div className="flex flex-col gap-6">
+              <h3 className="[font-family:'Geist',Helvetica] font-semibold text-[#0f0a2e] text-base leading-6">
+                Resources
+              </h3>
+              <div className="flex flex-col gap-[18px]">
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Documentation
+                </a>
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  FAQ
+                </a>
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Blog
+                </a>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-gray-900 mb-4">Community</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">Discord</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">Twitter</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">Governance</a></li>
-              </ul>
+            <div className="flex flex-col gap-6">
+              <h3 className="[font-family:'Geist',Helvetica] font-semibold text-[#0f0a2e] text-base leading-6">
+                Community
+              </h3>
+              <div className="flex flex-col gap-[18px]">
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Discord
+                </a>
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Twitter
+                </a>
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Governance
+                </a>
+              </div>
             </div>
-            <div>
-              <h4 className="font-bold text-gray-900 mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">Privacy</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">Terms</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6] transition-colors">Security</a></li>
-              </ul>
+            <div className="flex flex-col gap-6">
+              <h3 className="[font-family:'Geist',Helvetica] font-semibold text-[#0f0a2e] text-base leading-6">
+                Legal
+              </h3>
+              <div className="flex flex-col gap-[18px]">
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Privacy
+                </a>
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Terms
+                </a>
+                <a href="#" className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5 hover:text-gray-700 transition-colors">
+                  Security
+                </a>
+              </div>
             </div>
           </div>
-          <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-500">© 2025 SpeculateX. All rights reserved.</p>
-            <p className="text-sm text-gray-500 mt-2 md:mt-0">Built for the decentralized web</p>
+          <div className="flex justify-between items-center pt-6 border-t border-[#e5e6ea80]">
+            <p className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5">
+              © 2025 SpeculateX. All rights reserved.
+            </p>
+            <p className="[font-family:'Geist',Helvetica] font-light text-gray-500 text-sm leading-5">
+              Built for the decentralized web
+            </p>
           </div>
         </div>
       </footer>

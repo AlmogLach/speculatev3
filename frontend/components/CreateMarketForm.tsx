@@ -58,6 +58,24 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
     },
   });
 
+  // Helper function to get market icon based on question
+  const getMarketIcon = (questionText: string) => {
+    const q = questionText.toLowerCase();
+    if (q.includes('btc') || q.includes('bitcoin')) return '₿';
+    if (q.includes('eth') || q.includes('ethereum')) return 'Ξ';
+    if (q.includes('sol') || q.includes('solana')) return '◎';
+    if (q.includes('xrp') || q.includes('ripple')) return '✕';
+    if (q.includes('doge') || q.includes('dogecoin')) return '🐕';
+    if (q.includes('bnb')) return '🔷';
+    if (q.includes('polygon') || q.includes('matic')) return '⬟';
+    if (q.includes('1inch')) return '1';
+    if (q.includes('politics') || q.includes('election') || q.includes('president')) return '🏛️';
+    if (q.includes('sports') || q.includes('football') || q.includes('soccer') || q.includes('basketball')) return '⚽';
+    if (q.includes('tech') || q.includes('technology') || q.includes('ai') || q.includes('artificial intelligence')) return '💻';
+    if (q.includes('finance') || q.includes('stock') || q.includes('market')) return '📈';
+    return '💵';
+  };
+
   // Auto-generate token names and symbols from question
   useEffect(() => {
     if (question) {
@@ -244,15 +262,28 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Market Question
                   </label>
-                  <input
-                    type="text"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="e.g., Will BTC reach $150k by 2026?"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                    required
-                  />
+                  <div className="relative">
+                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
+                      <div className="w-10 h-10 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-xl flex items-center justify-center text-2xl border border-[#14B8A6]/20">
+                        {question ? getMarketIcon(question) : '💵'}
+                      </div>
+                    </div>
+                    <input
+                      type="text"
+                      value={question}
+                      onChange={(e) => setQuestion(e.target.value)}
+                      placeholder="e.g., Will BTC reach $150k by 2026?"
+                      className="w-full rounded-lg border border-gray-300 pl-16 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+                      required
+                    />
+                  </div>
                   <p className="mt-1 text-xs text-gray-500">Make it clear and specific. This cannot be changed later.</p>
+                  {question && (
+                    <div className="mt-2 flex items-center gap-2 text-xs text-[#14B8A6]">
+                      <span className="font-semibold">Market Icon Preview:</span>
+                      <span className="text-lg">{getMarketIcon(question)}</span>
+                    </div>
+                  )}
                 </div>
 
                 {/* Description */}
