@@ -1,7 +1,8 @@
 import { getDefaultConfig } from '@rainbow-me/rainbowkit';
 import { bscTestnet } from 'wagmi/chains';
 import { http } from 'wagmi';
-import { quickNodeRpcUrl } from './contracts';
+
+const rpcUrl = process.env.NEXT_PUBLIC_RPC_URL || 'https://data-seed-prebsc-1-s1.binance.org:8545';
 
 export const config = getDefaultConfig({
   appName: 'SpeculateX v3',
@@ -9,6 +10,6 @@ export const config = getDefaultConfig({
   chains: [bscTestnet],
   ssr: true,
   transports: {
-    [bscTestnet.id]: http(quickNodeRpcUrl),
+    [bscTestnet.id]: http(rpcUrl),
   },
 });
