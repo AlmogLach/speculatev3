@@ -3,6 +3,14 @@ import { fetchCandlesFromSubgraph, CandleGql } from './subgraph';
 
 export type PricePoint = {
   timestamp: number;
+  priceYes: number; // YES price in USD (0-1 range)
+  priceNo: number; // NO price in USD (0-1 range)
+  volume: number;
+};
+
+// Backward compatibility - keep price field for existing code
+export type PricePointLegacy = {
+  timestamp: number;
   price: number; // YES price in USD (0-1 range)
   volume: number;
 };
@@ -10,24 +18,35 @@ export type PricePoint = {
 function candlesToPricePoints(candles: CandleGql[]): PricePoint[] {
   const points = candles.map((candle) => {
     const closeYES = parseFloat(candle.closeYES);
-    const price = closeYES / 1000000; // Convert E6 to decimal (0-1 range)
+    const closeNO = parseFloat(candle.closeNO);
+    const priceYes = closeYES / 1000000; // Convert E6 to decimal (0-1 range)
+    const priceNo = closeNO / 1000000; // Convert E6 to decimal (0-1 range)
     
-    if (isNaN(price) || price < 0 || price > 1) {
-      console.warn('[usePriceHistory] Invalid price:', { 
+    if (isNaN(priceYes) || priceYes < 0 || priceYes > 1) {
+      console.warn('[usePriceHistory] Invalid YES price:', { 
         closeYES: candle.closeYES, 
-        calculated: price,
+        calculated: priceYes,
+        candle: candle.id 
+      });
+    }
+    
+    if (isNaN(priceNo) || priceNo < 0 || priceNo > 1) {
+      console.warn('[usePriceHistory] Invalid NO price:', { 
+        closeNO: candle.closeNO, 
+        calculated: priceNo,
         candle: candle.id 
       });
     }
     
     return {
       timestamp: parseInt(candle.startTimestamp),
-      price: price,
+      priceYes: priceYes,
+      priceNo: priceNo,
       volume: parseFloat(candle.volume) / 1000000, // Convert from 6 decimals to USD
     };
   });
   
-  return points.filter(p => !isNaN(p.price) && p.price >= 0 && p.price <= 1);
+  return points.filter(p => !isNaN(p.priceYes) && !isNaN(p.priceNo) && p.priceYes >= 0 && p.priceYes <= 1 && p.priceNo >= 0 && p.priceNo <= 1);
 }
 
 export function usePriceHistory(

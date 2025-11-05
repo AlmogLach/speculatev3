@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
+import Image from 'next/image';
 import { getMarketCount } from '@/lib/hooks';
 import { useReadContract } from 'wagmi';
 import { addresses } from '@/lib/contracts';
@@ -112,11 +113,16 @@ export default function Home() {
               <motion.div 
                 whileHover={{ rotate: 360, scale: 1.1 }}
                 transition={{ duration: 0.5 }}
-                className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#14B8A6] to-[#0D9488] flex items-center justify-center shadow-lg"
+                className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-lg"
               >
-                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-                </svg>
+                <Image
+                  src="/logo.jpg"
+                  alt="SpeculateX Logo"
+                  width={40}
+                  height={40}
+                  className="object-contain"
+                  unoptimized
+                />
               </motion.div>
               <span className="text-2xl font-bold text-gray-900">SpeculateX</span>
             </div>
@@ -153,7 +159,7 @@ export default function Home() {
                 transition={{ duration: 2, repeat: Infinity }}
                 className="w-2.5 h-2.5 rounded-full bg-[#14B8A6] mr-3"
               />
-              <span className="relative z-10 text-sm font-bold text-[#14B8A6] uppercase tracking-wider">Beta Live</span>
+              <span className="relative z-10 text-sm font-bold text-[#14B8A6] uppercase tracking-wider">Live on BNB Chain</span>
             </div>
           </motion.div>
 
@@ -164,9 +170,8 @@ export default function Home() {
             transition={{ delay: 0.3, duration: 0.8 }}
             className="text-6xl sm:text-7xl md:text-8xl font-black leading-[1.1] mb-8 tracking-tight"
           >
-            <span className="text-gray-900">Profit from the</span>
-            <span className="block mt-2 bg-gradient-to-r from-[#14B8A6] via-[#0D9488] to-[#14B8A6] bg-clip-text text-transparent animate-gradient">
-              Curve Wars
+            <span className="bg-gradient-to-r from-[#14B8A6] via-[#0D9488] to-[#14B8A6] bg-clip-text text-transparent animate-gradient">
+              be the market
             </span>
           </motion.h1>
 
@@ -177,16 +182,15 @@ export default function Home() {
             transition={{ delay: 0.5, duration: 0.8 }}
             className="text-xl sm:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed"
           >
-            Trade on crypto market predictions with instant liquidity and zero slippage.
-            <span className="block mt-2">Bet YES or NO on real-world outcomes.</span>
+            Create prediction markets with bonding curves. Trade outcomes. Earn from every transaction.
           </motion.p>
 
-          {/* CTA Buttons */}
+          {/* CTA Button */}
           <motion.div 
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.7, duration: 0.8 }}
-            className="flex flex-col sm:flex-row gap-4 justify-center mb-12"
+            className="flex justify-center mb-12"
           >
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
@@ -200,21 +204,12 @@ export default function Home() {
                   transition={{ duration: 0.3 }}
                 />
                 <span className="relative z-10 flex items-center">
-                  Launch Dapp
+                  Launch App
                   <svg className="ml-3 w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </span>
                 <div className="absolute inset-0 blur-xl bg-[#14B8A6]/50 group-hover:bg-[#14B8A6]/70 transition-all -z-10"></div>
-              </Link>
-            </motion.div>
-            
-            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
-              <Link
-                href="/markets"
-                className="inline-flex items-center justify-center h-14 px-8 rounded-full border-2 border-gray-300 bg-white/80 backdrop-blur-sm text-lg font-bold text-gray-900 hover:border-[#14B8A6] hover:bg-white transition-all shadow-lg hover:shadow-xl"
-              >
-                Explore Markets
               </Link>
             </motion.div>
           </motion.div>

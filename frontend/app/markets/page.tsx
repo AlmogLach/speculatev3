@@ -188,13 +188,12 @@ export default function MarketsPage() {
             BACK TO HOME
           </Link>
           <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-4 tracking-tight">
-            What&apos;s the Market
-            <span className="block bg-gradient-to-r from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent">
-              Thinking?
+            <span className="bg-gradient-to-r from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent">
+              Turn Conviction Into Capital
             </span>
           </h1>
           <p className="text-xl text-gray-600 max-w-2xl">
-            Trade what you believe in — every market reflects real-time sentiment and liquidity.
+            Explore prediction markets across every category. When you know what&apos;s coming, trade it.
           </p>
         </motion.div>
 
@@ -446,16 +445,16 @@ export default function MarketsPage() {
                             className="bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl p-4 border border-green-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
                           >
                             <div className="text-xs font-bold text-green-600 mb-2 uppercase tracking-wide">YES</div>
-                            <div className="text-2xl font-black text-green-700">${market.yesPrice.toFixed(3)}</div>
-                            <div className="text-xs text-green-600 mt-1 font-semibold">{market.yesPercent}%</div>
+                            <div className="text-2xl font-black text-green-700">{market.yesPrice.toFixed(2)}</div>
+                            <div className="text-xs text-green-600 mt-1 font-semibold">Price</div>
                           </motion.div>
                           <motion.div 
                             whileHover={{ scale: 1.05 }}
                             className="bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-xl p-4 border border-red-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
                           >
                             <div className="text-xs font-bold text-red-600 mb-2 uppercase tracking-wide">NO</div>
-                            <div className="text-2xl font-black text-red-700">${market.noPrice.toFixed(3)}</div>
-                            <div className="text-xs text-red-600 mt-1 font-semibold">{market.noPercent}%</div>
+                            <div className="text-2xl font-black text-red-700">{market.noPrice.toFixed(2)}</div>
+                            <div className="text-xs text-red-600 mt-1 font-semibold">Price</div>
                           </motion.div>
                         </div>
 

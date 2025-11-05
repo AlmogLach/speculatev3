@@ -38,10 +38,15 @@ export default function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-lg bg-gradient-to-br from-[#14B8A6] to-[#0D9488] flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-              <svg className="w-5 h-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
-              </svg>
+            <div className="w-9 h-9 rounded-lg overflow-hidden shadow-md group-hover:shadow-lg transition-shadow flex items-center justify-center">
+              <Image
+                src="/logo.jpg"
+                alt="SpeculateX Logo"
+                width={36}
+                height={36}
+                className="object-contain"
+                unoptimized
+              />
             </div>
             <h1 className="text-xl font-bold text-gray-900 group-hover:text-[#14B8A6] transition-colors">
               SpeculateX

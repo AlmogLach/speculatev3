@@ -17,7 +17,7 @@ import { usePriceHistory, PricePoint } from '@/lib/usePriceHistory';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
 
 // Enhanced Price Chart Component
-function PriceChart({ data }: { data: PricePoint[] }) {
+function PriceChart({ data, selectedSide }: { data: PricePoint[]; selectedSide: 'yes' | 'no' }) {
   const [chartKey, setChartKey] = useState(0);
   
   // Debug logging and force re-render when data changes
@@ -25,7 +25,8 @@ function PriceChart({ data }: { data: PricePoint[] }) {
     console.log('[PriceChart] Data received:', {
       length: data.length,
       sample: data.slice(0, 3),
-      allPrices: data.map(d => d.price),
+      allPricesYes: data.map(d => d.priceYes),
+      allPricesNo: data.map(d => d.priceNo),
     });
     // Force chart to re-render when data changes
     setChartKey(prev => prev + 1);
@@ -59,8 +60,8 @@ function PriceChart({ data }: { data: PricePoint[] }) {
     const date = new Date(point.timestamp * 1000);
     return {
       time: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' }),
-      price: point.price * 100, // Convert to percentage
-      priceDecimal: point.price,
+      priceYes: point.priceYes, // YES price in 0-1 format
+      priceNo: point.priceNo, // NO price in 0-1 format
       timestamp: point.timestamp,
       fullDate: date.toISOString(),
     };
@@ -69,52 +70,55 @@ function PriceChart({ data }: { data: PricePoint[] }) {
   console.log('[PriceChart] Chart data prepared:', {
     length: chartData.length,
     sample: chartData.slice(0, 3),
-    priceRange: [Math.min(...chartData.map(d => d.price)), Math.max(...chartData.map(d => d.price))],
+    priceYesRange: [Math.min(...chartData.map(d => d.priceYes)), Math.max(...chartData.map(d => d.priceYes))],
+    priceNoRange: [Math.min(...chartData.map(d => d.priceNo)), Math.max(...chartData.map(d => d.priceNo))],
   });
 
-  const prices = data.map(d => d.price * 100);
-  const minPrice = Math.min(...prices);
-  const maxPrice = Math.max(...prices);
+  // Calculate domain based on both YES and NO prices (both lines always visible)
+  const allPrices = [...data.map(d => d.priceYes), ...data.map(d => d.priceNo)];
+  const minPrice = Math.min(...allPrices);
+  const maxPrice = Math.max(...allPrices);
   const priceRange = maxPrice - minPrice;
   
   let domain: [number, number];
   if (priceRange === 0) {
     const center = minPrice;
-    domain = [Math.max(0, center - 5), Math.min(100, center + 5)];
+    domain = [Math.max(0, center - 0.05), Math.min(1, center + 0.05)];
   } else {
     const padding = priceRange * 0.15;
     domain = [
       Math.max(0, minPrice - padding),
-      Math.min(100, maxPrice + padding)
+      Math.min(1, maxPrice + padding)
     ];
   }
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {
       const data = payload[0].payload;
-      const isPositive = data.price >= 50;
       return (
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          className="bg-white p-4 rounded-xl shadow-2xl border border-gray-200"
-        >
-          <p className={`text-lg font-black mb-2 ${isPositive ? 'text-[#14B8A6]' : 'text-red-500'}`}>
-            {data.price.toFixed(2)}%
-          </p>
-          <p className="text-xs font-semibold text-gray-700 mb-1">
-            ${data.priceDecimal.toFixed(4)} per share
-          </p>
-          <p className="text-xs text-gray-500">
+        <div className="bg-white p-3 rounded-lg shadow-lg border border-gray-200">
+          <p className="text-xs text-gray-500 mb-2 font-semibold">
             {new Date(data.timestamp * 1000).toLocaleString()}
           </p>
-        </motion.div>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${selectedSide === 'yes' ? 'ring-2 ring-green-500 ring-offset-1' : ''} bg-green-500`}></div>
+              <span className="text-sm font-semibold text-gray-700">YES:</span>
+              <span className={`text-sm font-bold ${selectedSide === 'yes' ? 'text-green-600' : 'text-green-500/70'}`}>${data.priceYes.toFixed(2)}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <div className={`w-3 h-3 rounded-full ${selectedSide === 'no' ? 'ring-2 ring-red-500 ring-offset-1' : ''} bg-red-500`}></div>
+              <span className="text-sm font-semibold text-gray-700">NO:</span>
+              <span className={`text-sm font-bold ${selectedSide === 'no' ? 'text-red-600' : 'text-red-500/70'}`}>${data.priceNo.toFixed(2)}</span>
+            </div>
+          </div>
+        </div>
       );
     }
     return null;
   };
 
-  const formatYAxis = (value: number) => `${value.toFixed(0)}%`;
+  const formatYAxis = (value: number) => `$${value.toFixed(2)}`;
 
   // Sort data by timestamp to ensure chronological order
   const sortedChartData = [...chartData].sort((a, b) => a.timestamp - b.timestamp);
@@ -128,15 +132,13 @@ function PriceChart({ data }: { data: PricePoint[] }) {
           margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
         >
         <defs>
-          <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.4} />
-            <stop offset="50%" stopColor="#14B8A6" stopOpacity={0.2} />
-            <stop offset="95%" stopColor="#14B8A6" stopOpacity={0.05} />
+          <linearGradient id="yesGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#22c55e" stopOpacity={0.2} />
+            <stop offset="100%" stopColor="#22c55e" stopOpacity={0.05} />
           </linearGradient>
-          <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
-            <stop offset="0%" stopColor="#14B8A6" />
-            <stop offset="50%" stopColor="#0D9488" />
-            <stop offset="100%" stopColor="#14B8A6" />
+          <linearGradient id="noGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#ef4444" stopOpacity={0.2} />
+            <stop offset="100%" stopColor="#ef4444" stopOpacity={0.05} />
           </linearGradient>
         </defs>
         <CartesianGrid 
@@ -144,44 +146,67 @@ function PriceChart({ data }: { data: PricePoint[] }) {
           stroke="#e5e7eb" 
           vertical={false}
           strokeWidth={1}
-          opacity={0.5}
+          opacity={0.3}
         />
         <XAxis
           dataKey="time"
           axisLine={false}
           tickLine={false}
-          tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 600 }}
+          tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 500 }}
           interval="preserveStartEnd"
-          minTickGap={50}
+          minTickGap={30}
         />
         <YAxis
           domain={domain}
           axisLine={false}
           tickLine={false}
-          tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 600 }}
+          tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 500 }}
           tickFormatter={formatYAxis}
-          width={55}
+          width={60}
         />
-        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#14B8A6', strokeWidth: 2, strokeDasharray: '5 5' }} />
+        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '3 3', opacity: 0.3 }} />
+        {/* YES Line - Always visible, bold when selected */}
         <Area
           type="monotone"
-          dataKey="price"
+          dataKey="priceYes"
           stroke="none"
-          fill="url(#priceGradient)"
-          fillOpacity={1}
+          fill="url(#yesGradient)"
+          fillOpacity={selectedSide === 'yes' ? 1 : 0.3}
         />
         <Line
           type="monotone"
-          dataKey="price"
-          stroke="url(#lineGradient)"
-          strokeWidth={3}
+          dataKey="priceYes"
+          stroke="#22c55e"
+          strokeWidth={selectedSide === 'yes' ? 3 : 1.5}
           dot={false}
+          opacity={selectedSide === 'yes' ? 1 : 0.6}
           activeDot={{ 
-            r: 8, 
-            fill: '#14B8A6', 
+            r: selectedSide === 'yes' ? 6 : 4, 
+            fill: '#22c55e', 
             stroke: '#fff', 
-            strokeWidth: 3,
-            filter: 'drop-shadow(0 0 8px rgba(20, 184, 166, 0.5))'
+            strokeWidth: 2
+          }}
+        />
+        {/* NO Line - Always visible, bold when selected */}
+        <Area
+          type="monotone"
+          dataKey="priceNo"
+          stroke="none"
+          fill="url(#noGradient)"
+          fillOpacity={selectedSide === 'no' ? 1 : 0.3}
+        />
+        <Line
+          type="monotone"
+          dataKey="priceNo"
+          stroke="#ef4444"
+          strokeWidth={selectedSide === 'no' ? 3 : 1.5}
+          dot={false}
+          opacity={selectedSide === 'no' ? 1 : 0.6}
+          activeDot={{ 
+            r: selectedSide === 'no' ? 6 : 4, 
+            fill: '#ef4444', 
+            stroke: '#fff', 
+            strokeWidth: 2
           }}
         />
       </ComposedChart>
@@ -199,11 +224,16 @@ export default function MarketDetailPage() {
   const [priceYes, setPriceYes] = useState<number>(0);
   const [priceNo, setPriceNo] = useState<number>(0);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'Position' | 'Orders' | 'Transactions' | 'Resolution'>('Resolution');
+  const [activeTab, setActiveTab] = useState<'Position' | 'Comments' | 'Transactions' | 'Resolution'>('Resolution');
   const [holderTab, setHolderTab] = useState<'yes' | 'no'>('yes');
+  const [chartSide, setChartSide] = useState<'yes' | 'no'>('yes');
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | 'ALL'>('1W');
   const [yesBalance, setYesBalance] = useState<string>('0');
   const [noBalance, setNoBalance] = useState<string>('0');
+  const [comments, setComments] = useState<Array<{ id: string; user: string; text: string; timestamp: number; side?: 'yes' | 'no' }>>([]);
+  const [newComment, setNewComment] = useState('');
+  const [commentSide, setCommentSide] = useState<'yes' | 'no' | null>(null);
+  const [isSubmittingComment, setIsSubmittingComment] = useState(false);
   
   const { data: topHoldersYes = [] } = useTopHolders(
     marketId ? parseInt(marketId) : null,
@@ -242,11 +272,85 @@ export default function MarketDetailPage() {
     }
   }, [marketId]);
 
+  // Load comments from localStorage
+  const loadComments = useCallback(() => {
+    if (!marketId) return;
+    try {
+      const stored = localStorage.getItem(`comments_${marketId}`);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        setComments(parsed);
+      }
+    } catch (error) {
+      console.error('Error loading comments:', error);
+    }
+  }, [marketId]);
+
+  // Save comments to localStorage
+  const saveComments = useCallback((newComments: typeof comments) => {
+    if (!marketId) return;
+    try {
+      localStorage.setItem(`comments_${marketId}`, JSON.stringify(newComments));
+      setComments(newComments);
+    } catch (error) {
+      console.error('Error saving comments:', error);
+    }
+  }, [marketId]);
+
+  // Handle comment submission
+  const handleSubmitComment = useCallback(async () => {
+    if (!newComment.trim() || !commentSide || !address || isSubmittingComment) return;
+
+    setIsSubmittingComment(true);
+    try {
+      const newCommentObj = {
+        id: `${Date.now()}_${address.slice(0, 8)}`,
+        user: address,
+        text: newComment.trim(),
+        timestamp: Date.now(),
+        side: commentSide,
+      };
+
+      const updatedComments = [newCommentObj, ...comments];
+      saveComments(updatedComments);
+      setNewComment('');
+      setCommentSide(null);
+    } catch (error) {
+      console.error('Error submitting comment:', error);
+      alert('Failed to post comment. Please try again.');
+    } finally {
+      setIsSubmittingComment(false);
+    }
+  }, [newComment, commentSide, address, isSubmittingComment, comments, saveComments]);
+
   useEffect(() => {
     if (marketId) {
       loadMarket();
+      loadComments();
+      
+      // Set up real-time price updates every 5 seconds
+      const priceUpdateInterval = setInterval(async () => {
+        try {
+          const yesPrice = await getPriceYes(BigInt(marketId));
+          const noPrice = await getPriceNo(BigInt(marketId));
+          setPriceYes(parseFloat(yesPrice));
+          setPriceNo(parseFloat(noPrice));
+        } catch (error) {
+          console.error('Error updating prices:', error);
+        }
+      }, 5000); // Update every 5 seconds
+
+      // Set up real-time comment sync every 3 seconds
+      const commentSyncInterval = setInterval(() => {
+        loadComments();
+      }, 3000); // Sync comments every 3 seconds
+      
+      return () => {
+        clearInterval(priceUpdateInterval);
+        clearInterval(commentSyncInterval);
+      };
     }
-  }, [marketId, loadMarket]);
+  }, [marketId, loadMarket, loadComments]);
 
   const { data: yesBal } = useReadContract({
     address: market?.yes as `0x${string}` | undefined,
@@ -277,19 +381,23 @@ export default function MarketDetailPage() {
     }
   }, [yesBal, noBal]);
 
-  const chancePercentage = priceYes * 100;
-  
-  // Calculate actual change from price history
+  // Calculate percentage change from price history based on selected chart side
   // Compare current price with the earliest price in the selected time range
-  let chanceChange = 0;
+  const currentPrice = chartSide === 'yes' ? priceYes : priceNo;
+  let chanceChangePercent = 0;
   if (priceHistory.length > 0) {
     // Sort by timestamp (oldest first) to get the first price in the time range
     const sortedHistory = [...priceHistory].sort((a, b) => a.timestamp - b.timestamp);
-    const firstPrice = sortedHistory[0].price * 100;
-    chanceChange = chancePercentage - firstPrice;
+    const firstPrice = chartSide === 'yes' ? sortedHistory[0].priceYes : sortedHistory[0].priceNo;
+    // Calculate percentage change: ((current - first) / first) * 100
+    if (firstPrice > 0) {
+      chanceChangePercent = ((currentPrice - firstPrice) / firstPrice) * 100;
+    } else {
+      chanceChangePercent = 0;
+    }
   } else {
     // No price history yet, show 0 change
-    chanceChange = 0;
+    chanceChangePercent = 0;
   }
 
   const totalVolume = market?.totalPairsUSDC ? Number(formatUnits(market.totalPairsUSDC as bigint, 6)) : 0;
@@ -490,23 +598,28 @@ export default function MarketDetailPage() {
             >
               <div className="flex items-center justify-between mb-8">
                 <div>
-                  <div className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wider">Market Probability</div>
+                  <div className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wider">Market Price ({chartSide.toUpperCase()})</div>
                   <div className="flex items-baseline gap-4">
                     <motion.div 
-                      key={chancePercentage}
+                      key={chartSide === 'yes' ? priceYes : priceNo}
                       initial={{ scale: 1.2, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      className="text-6xl font-black bg-gradient-to-r from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent"
+                      className={`text-6xl font-black bg-clip-text text-transparent ${
+                        chartSide === 'yes' 
+                          ? 'bg-gradient-to-r from-green-500 to-green-600' 
+                          : 'bg-gradient-to-r from-red-500 to-red-600'
+                      }`}
                     >
-                      {chancePercentage.toFixed(1)}%
+                      ${(chartSide === 'yes' ? priceYes : priceNo).toFixed(2)}
                     </motion.div>
                     <motion.div 
+                      key={chanceChangePercent}
                       initial={{ x: -10, opacity: 0 }}
                       animate={{ x: 0, opacity: 1 }}
                       transition={{ delay: 0.2 }}
-                      className={`flex items-center text-xl font-bold ${chanceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                      className={`flex items-center text-xl font-bold ${chanceChangePercent >= 0 ? 'text-green-600' : 'text-red-600'}`}
                     >
-                      {chanceChange >= 0 ? '↑' : '↓'} {Math.abs(chanceChange).toFixed(2)}%
+                      {chanceChangePercent >= 0 ? '↑' : '↓'} {Math.abs(chanceChangePercent).toFixed(2)}%
                     </motion.div>
                   </div>
                 </div>
@@ -514,33 +627,43 @@ export default function MarketDetailPage() {
                   <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setHolderTab('yes')}
-                    className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg ${
-                      holderTab === 'yes' 
+                    onClick={() => setChartSide('yes')}
+                    className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg relative ${
+                      chartSide === 'yes' 
                         ? 'bg-gradient-to-r from-green-400 to-green-500 text-white' 
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    YES
+                    <div className="flex flex-col items-center">
+                      <span>YES</span>
+                      <span className={`text-xs mt-1 ${chartSide === 'yes' ? 'text-white/80' : 'text-gray-500'}`}>
+                        ${priceYes.toFixed(2)}
+                      </span>
+                    </div>
                   </motion.button>
                   <motion.button 
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
-                    onClick={() => setHolderTab('no')}
-                    className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg ${
-                      holderTab === 'no' 
+                    onClick={() => setChartSide('no')}
+                    className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg relative ${
+                      chartSide === 'no' 
                         ? 'bg-gradient-to-r from-red-400 to-red-500 text-white' 
                         : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                     }`}
                   >
-                    NO
+                    <div className="flex flex-col items-center">
+                      <span>NO</span>
+                      <span className={`text-xs mt-1 ${chartSide === 'no' ? 'text-white/80' : 'text-gray-500'}`}>
+                        ${priceNo.toFixed(2)}
+                      </span>
+                    </div>
                   </motion.button>
                 </div>
               </div>
 
               {/* Enhanced Price History Graph */}
               <div className="mb-6">
-                <div className="h-80 bg-gradient-to-br from-gray-50 to-white rounded-2xl border-2 border-gray-100 p-6 relative overflow-hidden shadow-inner flex items-center justify-center">
+                <div className="h-80 bg-white rounded-xl border border-gray-200 p-4 relative overflow-hidden flex items-center justify-center">
                   {historyLoading ? (
                     <div className="flex items-center justify-center h-full w-full">
                       <motion.div
@@ -551,7 +674,7 @@ export default function MarketDetailPage() {
                     </div>
                   ) : (
                     <div className="w-full h-full">
-                      <PriceChart key={`${marketId}-${timeRange}-${priceHistory.length}`} data={priceHistory} />
+                      <PriceChart key={`${marketId}-${timeRange}-${priceHistory.length}-${chartSide}`} data={priceHistory} selectedSide={chartSide} />
                     </div>
                   )}
                 </div>
@@ -588,7 +711,7 @@ export default function MarketDetailPage() {
               className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100"
             >
               <div className="flex gap-2 mb-8 bg-gray-50 rounded-xl p-2">
-                {(['Position', 'Orders', 'Transactions', 'Resolution'] as const).map((tab) => (
+                {(['Position', 'Comments', 'Transactions', 'Resolution'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
@@ -720,10 +843,128 @@ export default function MarketDetailPage() {
                     </div>
                   )}
 
-                  {activeTab === 'Orders' && (
-                    <div className="text-center py-16">
-                      <div className="text-6xl mb-4">📋</div>
-                      <p className="text-gray-500 font-semibold">No orders yet</p>
+                  {activeTab === 'Comments' && (
+                    <div className="space-y-6">
+                      {/* Comment Input */}
+                      {isConnected && address ? (
+                        <div className="bg-gradient-to-br from-gray-50 to-white rounded-xl p-6 border border-gray-200">
+                          <div className="flex gap-2 mb-4">
+                            <button
+                              onClick={() => setCommentSide('yes')}
+                              className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                                commentSide === 'yes'
+                                  ? 'bg-gradient-to-r from-green-400 to-green-500 text-white shadow-md'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              YES
+                            </button>
+                            <button
+                              onClick={() => setCommentSide('no')}
+                              className={`flex-1 px-4 py-2 rounded-lg font-bold text-sm transition-all ${
+                                commentSide === 'no'
+                                  ? 'bg-gradient-to-r from-red-400 to-red-500 text-white shadow-md'
+                                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                              }`}
+                            >
+                              NO
+                            </button>
+                          </div>
+                          <div className="flex gap-3">
+                            <input
+                              type="text"
+                              value={newComment}
+                              onChange={(e) => setNewComment(e.target.value)}
+                              onKeyPress={(e) => {
+                                if (e.key === 'Enter' && !e.shiftKey) {
+                                  e.preventDefault();
+                                  handleSubmitComment();
+                                }
+                              }}
+                              placeholder={commentSide ? `Comment on ${commentSide.toUpperCase()}...` : "Select YES or NO to comment"}
+                              className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6] focus:border-transparent"
+                              disabled={!commentSide || isSubmittingComment}
+                            />
+                            <button
+                              onClick={handleSubmitComment}
+                              disabled={!newComment.trim() || !commentSide || isSubmittingComment}
+                              className="px-6 py-3 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white font-bold rounded-lg hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
+                              {isSubmittingComment ? 'Posting...' : 'Post'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="bg-gray-50 rounded-xl p-6 border border-gray-200 text-center">
+                          <p className="text-gray-500 font-semibold">Connect wallet to comment</p>
+                        </div>
+                      )}
+
+                      {/* Comments List */}
+                      <div className="space-y-4">
+                        {comments.length === 0 ? (
+                          <div className="text-center py-16 bg-gray-50 rounded-xl border border-gray-200">
+                            <div className="text-6xl mb-4">💬</div>
+                            <p className="text-gray-500 font-semibold">No comments yet</p>
+                            <p className="text-sm text-gray-400 mt-2">Be the first to share your thoughts!</p>
+                          </div>
+                        ) : (
+                          <AnimatePresence>
+                            {comments
+                              .sort((a, b) => b.timestamp - a.timestamp)
+                              .map((comment, idx) => (
+                                <motion.div
+                                  key={comment.id}
+                                  initial={{ opacity: 0, y: 20 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  exit={{ opacity: 0, y: -20 }}
+                                  transition={{ delay: idx * 0.05 }}
+                                  className={`p-4 rounded-xl border-2 ${
+                                    comment.side === 'yes'
+                                      ? 'bg-green-50 border-green-200'
+                                      : comment.side === 'no'
+                                      ? 'bg-red-50 border-red-200'
+                                      : 'bg-white border-gray-200'
+                                  }`}
+                                >
+                                  <div className="flex items-start justify-between mb-2">
+                                    <div className="flex items-center gap-3">
+                                      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold text-white ${
+                                        comment.side === 'yes'
+                                          ? 'bg-green-500'
+                                          : comment.side === 'no'
+                                          ? 'bg-red-500'
+                                          : 'bg-gray-400'
+                                      }`}>
+                                        {comment.user.slice(0, 2).toUpperCase()}
+                                      </div>
+                                      <div>
+                                        <div className="flex items-center gap-2">
+                                          <span className="text-sm font-bold text-gray-900">
+                                            {comment.user.slice(0, 6)}...{comment.user.slice(-4)}
+                                          </span>
+                                          {comment.side && (
+                                            <span className={`px-2 py-0.5 rounded-full text-xs font-bold ${
+                                              comment.side === 'yes'
+                                                ? 'bg-green-100 text-green-700'
+                                                : 'bg-red-100 text-red-700'
+                                            }`}>
+                                              {comment.side.toUpperCase()}
+                                            </span>
+                                          )}
+                                        </div>
+                                        <span className="text-xs text-gray-500">
+                                          {new Date(comment.timestamp).toLocaleString()}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <p className="text-sm text-gray-700 mt-2 whitespace-pre-wrap">{comment.text}</p>
+                                </motion.div>
+                              ))}
+                          </AnimatePresence>
+                        )}
+                      </div>
                     </div>
                   )}
 
