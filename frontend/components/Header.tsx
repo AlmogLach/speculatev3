@@ -4,11 +4,26 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAccount } from 'wagmi';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
+import { isAdmin as checkIsAdmin } from '@/lib/hooks';
 
 export default function Header() {
   const pathname = usePathname();
   const { address, isConnected } = useAccount();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      if (isConnected && address) {
+        const adminStatus = await checkIsAdmin(address);
+        setIsAdmin(adminStatus);
+      } else {
+        setIsAdmin(false);
+      }
+    };
+    checkAdmin();
+  }, [isConnected, address]);
 
   const isActive = (path: string) => {
     if (path === '/') return pathname === '/';
@@ -55,16 +70,18 @@ export default function Header() {
             >
               Markets
             </Link>
-            <Link
-              href="/admin"
-              className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                isActive('/admin')
-                  ? 'text-[#14B8A6] bg-[#14B8A6]/10'
-                  : 'text-gray-600 hover:text-[#14B8A6] hover:bg-gray-50'
-              }`}
-            >
-              Create
-            </Link>
+            {isAdmin && (
+              <Link
+                href="/admin"
+                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
+                  isActive('/admin')
+                    ? 'text-[#14B8A6] bg-[#14B8A6]/10'
+                    : 'text-gray-600 hover:text-[#14B8A6] hover:bg-gray-50'
+                }`}
+              >
+                Admin
+              </Link>
+            )}
             <Link
               href="/claim"
               className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${

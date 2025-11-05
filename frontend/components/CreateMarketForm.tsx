@@ -18,7 +18,6 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
   const [category, setCategory] = useState('Crypto');
   const [resolutionDate, setResolutionDate] = useState('');
   const [initUsdc, setInitUsdc] = useState('5000');
-  const [fundingGoal, setFundingGoal] = useState('10000');
   
   // Advanced fields (auto-generated but can be edited)
   const [yesName, setYesName] = useState('');
@@ -46,6 +45,16 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
     args: address && addresses.core ? [address, addresses.core] : undefined,
     query: {
       enabled: !!(address && addresses.usdc && addresses.core),
+    },
+  });
+
+  const { data: usdcBalance } = useReadContract({
+    address: addresses.usdc,
+    abi: usdcAbi,
+    functionName: 'balanceOf',
+    args: address ? [address] : undefined,
+    query: {
+      enabled: !!address,
     },
   });
 
@@ -91,7 +100,6 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
       setCategory('Crypto');
       setResolutionDate('');
       setInitUsdc('5000');
-      setFundingGoal('10000');
       setYesName('');
       setYesSymbol('');
       setNoName('');
@@ -212,7 +220,19 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
       });
     } catch (error: any) {
       console.error('Error creating market:', error);
-      const errorMessage = error?.message || error?.toString() || 'Unknown error';
+      let errorMessage = error?.message || error?.toString() || 'Unknown error';
+      
+      // Check for common error patterns
+      if (errorMessage.includes('execution reverted') || errorMessage.includes('transfer')) {
+        if (needsApproval) {
+          errorMessage = 'Transaction failed: USDC approval required. Please approve USDC first.';
+        } else if (usdcBalance !== undefined && (Number(usdcBalance) / 1e6) < parseFloat(initUsdc)) {
+          errorMessage = `Transaction failed: Insufficient USDC balance. You have ${(Number(usdcBalance) / 1e6).toFixed(2)} USDC but need ${initUsdc} USDC.`;
+        } else {
+          errorMessage = 'Transaction failed: Please check your USDC balance and approval. Make sure you have approved the contract to spend enough USDC.';
+        }
+      }
+      
       alert(`Failed to create market: ${errorMessage}`);
     }
   };
@@ -304,23 +324,6 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
                     className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
                     required
                   />
-                </div>
-
-                {/* Funding Goal */}
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Funding Goal (USDC)
-                  </label>
-                  <input
-                    type="number"
-                    value={fundingGoal}
-                    onChange={(e) => setFundingGoal(e.target.value)}
-                    placeholder="e.g., 10000"
-                    min="1"
-                    step="1"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                  />
-                  <p className="mt-1 text-xs text-gray-500">Optional: Target funding goal for this market</p>
                 </div>
 
                 {/* Advanced Options Toggle */}
@@ -435,17 +438,54 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
                   </div>
                 )}
 
+                {/* USDC Balance Warning */}
+                {usdcBalance !== undefined && parseFloat(initUsdc) > 0 && (
+                  (Number(usdcBalance) / 1e6) < parseFloat(initUsdc) && (
+                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
+                      <div className="flex items-start gap-3">
+                        <svg className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                        <div className="flex-1">
+                          <p className="text-sm font-semibold text-orange-900 mb-1">
+                            Insufficient USDC Balance
+                          </p>
+                          <p className="text-sm text-orange-800">
+                            You have {(Number(usdcBalance) / 1e6).toFixed(2)} USDC, but need {initUsdc} USDC to create this market.
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )
+                )}
+
                 {/* Approval Notice */}
                 {needsApproval && (
-                  <div className="p-4 bg-yellow-50 rounded-lg border border-yellow-200">
-                    <p className="text-sm text-yellow-800 mb-3">
-                      You need to approve USDC before creating the market.
-                    </p>
+                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
+                    <div className="flex items-start gap-3 mb-3">
+                      <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                      </svg>
+                      <div className="flex-1">
+                        <p className="text-sm font-semibold text-red-900 mb-1">
+                          USDC Approval Required
+                        </p>
+                        <p className="text-sm text-red-800 mb-2">
+                          Before creating a market, you must approve the contract to spend {initUsdc} USDC. This is required because the contract needs to transfer your USDC to bootstrap the market liquidity.
+                        </p>
+                        <p className="text-xs text-red-700 mt-2">
+                          Current allowance: {currentAllowance ? (Number(currentAllowance) / 1e6).toFixed(2) : '0'} USDC | Required: {initUsdc} USDC
+                        </p>
+                        <p className="text-xs text-red-600 mt-1 font-semibold">
+                          ⚠️ Transaction will fail without approval!
+                        </p>
+                      </div>
+                    </div>
                     <button
                       type="button"
                       onClick={handleApprove}
                       disabled={isApproving || isApprovalConfirming || isPending || isConfirming}
-                      className="w-full rounded-lg bg-yellow-600 px-4 py-3 text-sm font-semibold text-white hover:bg-yellow-500 disabled:opacity-50 transition-colors"
+                      className="w-full rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
                     >
                       {(isApproving || isApprovalConfirming) ? 'Approving...' : `Approve ${initUsdc} USDC`}
                     </button>
