@@ -515,48 +515,29 @@ export default function MarketDetailPage() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100 mb-8"
+          className="bg-gray-50 rounded-2xl p-8 shadow-lg border border-gray-200 mb-8"
         >
+          {/* LIVE Indicator and Header */}
           <div className="flex items-start justify-between mb-6">
-            <div className="flex items-center gap-6 flex-1">
-              <motion.div 
-                whileHover={{ rotate: 360 }}
-                transition={{ duration: 0.5 }}
-                className="w-16 h-16 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-2xl flex items-center justify-center border border-[#14B8A6]/20"
-              >
-                <span className="text-3xl">{getAssetIcon(market.question as string)}</span>
-              </motion.div>
-              <div className="flex-1">
-                <h1 className="text-3xl font-black text-gray-900 mb-3">{market.question}</h1>
-                <div className="flex flex-wrap items-center gap-4">
-                  <motion.span 
-                    initial={{ scale: 0 }}
-                    animate={{ scale: 1 }}
-                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-md ${
-                      isLive ? 'bg-gradient-to-r from-red-400 to-red-500 text-white' : 'bg-gray-100 text-gray-700'
-                    }`}
-                  >
-                    {isLive && (
-                      <motion.span
-                        animate={{ scale: [1, 1.3, 1] }}
-                        transition={{ duration: 2, repeat: Infinity }}
-                        className="w-2 h-2 bg-white rounded-full mr-2"
-                      />
-                    )}
-                    {isLive ? 'LIVE' : 'CLOSED'}
-                  </motion.span>
-                  <span className="text-sm font-semibold text-gray-600">
-                    Vol ${totalVolume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                  </span>
-                  <span className="text-sm text-gray-500">• Ends Jan 1, 2026</span>
-                </div>
-              </div>
+            {/* LIVE Indicator - Top Left */}
+            <div className="flex items-center gap-2">
+              {isLive && (
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="w-2 h-2 bg-red-500 rounded-full"
+                />
+              )}
+              <span className={`text-xs font-bold uppercase tracking-wide ${isLive ? 'text-red-500' : 'text-gray-500'}`}>
+                {isLive ? 'LIVE' : 'CLOSED'}
+              </span>
             </div>
+            {/* Action Icons - Top Right */}
             <div className="flex items-center gap-2">
               <motion.button 
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
+                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
@@ -565,12 +546,30 @@ export default function MarketDetailPage() {
               <motion.button 
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.9 }}
-                className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
+                className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
               >
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
                 </svg>
               </motion.button>
+            </div>
+          </div>
+
+          {/* Market Icon and Question */}
+          <div className="flex items-start gap-6 mb-4">
+            {/* Large Circular Orange Icon */}
+            <div className="w-20 h-20 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
+              <span className="text-4xl text-white font-bold">{getAssetIcon(market.question as string)}</span>
+            </div>
+            <div className="flex-1">
+              <h1 className="text-3xl font-black text-gray-900 mb-3">{market.question}</h1>
+              <div className="text-sm text-gray-500">
+                <span className="font-medium">
+                  Vol ${totalVolume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                </span>
+                <span className="mx-2">•</span>
+                <span>Jan 1, 2026</span>
+              </div>
             </div>
           </div>
 
@@ -579,21 +578,12 @@ export default function MarketDetailPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3 }}
-            className="mt-6 pt-6 border-t border-gray-200"
+            className="mt-6 pt-6 border-t border-gray-300"
           >
-            <div className="flex items-start gap-3">
-              <div className="w-8 h-8 bg-[#14B8A6]/10 rounded-lg flex items-center justify-center flex-shrink-0">
-                <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-              </div>
-              <div className="flex-1">
-                <h3 className="text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Resolution Rules</h3>
-                <p className="text-sm text-gray-600 leading-relaxed">
-                  Bitcoin price target of $100,000 USD by end of 2026. Resolution based on Coinbase spot price at market close on December 31, 2026.
-                </p>
-              </div>
-            </div>
+            <h3 className="text-base font-bold text-gray-900 mb-3">Rules</h3>
+            <p className="text-sm text-gray-600 leading-relaxed">
+              Bitcoin price target of $100,000 USD by end of 2026. Resolution based on Coinbase spot price at market close on December 31, 2026.
+            </p>
           </motion.div>
         </motion.div>
 

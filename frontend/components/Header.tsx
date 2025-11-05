@@ -37,20 +37,15 @@ export default function Header() {
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center gap-2 group">
-            <div className="w-9 h-9 rounded-lg overflow-hidden shadow-md group-hover:shadow-lg transition-shadow flex items-center justify-center">
-              <Image
-                src="/logo.jpg"
-                alt="SpeculateX Logo"
-                width={36}
-                height={36}
-                className="object-contain"
-                unoptimized
-              />
-            </div>
-            <h1 className="text-xl font-bold text-gray-900 group-hover:text-[#14B8A6] transition-colors">
-              SpeculateX
-            </h1>
+          <Link href="/" className="flex items-center group">
+            <Image
+              src="/logo.jpg"
+              alt="SpeculateX Logo"
+              width={120}
+              height={32}
+              className="h-8 w-auto object-contain"
+              unoptimized
+            />
           </Link>
 
           {/* Navigation */}

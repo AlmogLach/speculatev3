@@ -207,3 +207,30 @@ export async function fetchCandlesFromSubgraph(
   }
 }
 
+// Fetch unique active traders count
+export async function fetchUniqueTradersCount(): Promise<number> {
+  const query = `
+    query UniqueTraders {
+      trades(
+        first: 1000,
+        orderBy: timestamp,
+        orderDirection: desc
+      ) {
+        user
+      }
+    }
+  `;
+
+  try {
+    const data = await graphRequest<{ trades?: { user: string }[] }>(query);
+    if (!data?.trades) return 0;
+    
+    // Get unique user addresses
+    const uniqueTraders = new Set(data.trades.map(trade => trade.user.toLowerCase()));
+    return uniqueTraders.size;
+  } catch (error) {
+    console.error('Error fetching unique traders from subgraph:', error);
+    return 0;
+  }
+}
+

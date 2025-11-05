@@ -22,6 +22,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
   const [noBalance, setNoBalance] = useState('0');
   const [usdcBalance, setUsdcBalance] = useState('0');
   const [estimatedOutput, setEstimatedOutput] = useState<string | null>(null);
+  const [setExpiration, setSetExpiration] = useState(false);
   
   const { data: hash, writeContract, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
@@ -492,155 +493,204 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
     }
   };
 
+  // Calculate prices for display
+  const priceYes = priceYesE6 ? parseFloat(formatUnits(priceYesE6 as bigint, 6)) : 0;
+  const priceNo = priceNoE6 ? parseFloat(formatUnits(priceNoE6 as bigint, 6)) : 0;
+  
+  // Format price for display (0-1 range to dollar format)
+  const formatPrice = (price: number): string => {
+    const cents = price * 100;
+    if (cents >= 100) {
+      return `$${cents.toFixed(2)}`;
+    }
+    const formatted = cents.toFixed(1).replace(/\.0$/, '');
+    return `${formatted}¢`;
+  };
+
+  // Calculate total cost
+  const totalCost = amount && parseFloat(amount) > 0 
+    ? (tradeMode === 'buy' ? parseFloat(amount) : (parseFloat(amount) * (side === 'yes' ? priceYes : priceNo)))
+    : 0;
+
+  // Quick amount buttons
+  const quickAmounts = ['10', '50', '100', 'Max'];
+
   return (
-    <div className="rounded-lg border border-gray-200 bg-white p-6 shadow-sm">
-      <h3 className="text-lg font-semibold text-gray-900 mb-4">{question}</h3>
-      
-      {/* Balances */}
-      {address && (
-        <div className="mb-4 rounded-md bg-gray-50 p-4">
-          <p className="text-xs text-gray-600 mb-2">Your Balances:</p>
-          <div className="flex justify-between text-sm">
-            <span className="font-medium text-green-700">YES: {parseFloat(yesBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
-            <span className="font-medium text-red-700">NO: {parseFloat(noBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })}</span>
-          </div>
-          {(parseFloat(yesBalance) > 0 || parseFloat(noBalance) > 0) && (
-            <div className="mt-3 rounded-md bg-green-50 p-3 border border-green-200">
-              <p className="text-xs font-medium text-green-800 mb-2">💰 Selling Returns USDC:</p>
-              <ul className="text-xs text-green-700 space-y-1">
-                <li>• <strong>Selling {side === 'yes' ? 'YES' : 'NO'} tokens:</strong> Returns USDC directly</li>
-                <li>• <strong>Mechanism:</strong> CPMM swap → mint pairs → burn pairs → receive USDC</li>
-                <li>• <strong>You receive:</strong> USDC (minus ~1% fee)</li>
-                <li>• <strong>Note:</strong> You don&apos;t need equal YES + NO pairs - selling returns USDC directly!</li>
-              </ul>
-            </div>
-          )}
-        </div>
-      )}
-      
-      {/* Mode Toggle */}
-      <div className="mb-4 flex gap-2">
+    <div className="space-y-6">
+      {/* BUY/SELL Tabs */}
+      <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
         <button
           onClick={() => setTradeMode('buy')}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium ${
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all ${
             tradeMode === 'buy'
-              ? 'bg-green-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'bg-green-500 text-white shadow-md'
+              : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Buy
+          BUY
         </button>
         <button
           onClick={() => setTradeMode('sell')}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-medium ${
+          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all ${
             tradeMode === 'sell'
-              ? 'bg-red-600 text-white'
-              : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+              ? 'bg-green-500 text-white shadow-md'
+              : 'text-gray-600 hover:text-gray-900'
           }`}
         >
-          Sell
+          SELL
         </button>
       </div>
 
-      {/* Side Toggle */}
-      <div className="mb-4 flex gap-2">
+      {/* YES/NO Price Cards */}
+      <div className="grid grid-cols-2 gap-3">
         <button
           onClick={() => setSide('yes')}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${
-            side === 'yes'
-              ? 'bg-green-100 text-green-700 border-2 border-green-600'
-              : 'bg-gray-50 text-gray-600 border-2 border-transparent'
+          className={`bg-green-50 hover:bg-green-100 rounded-xl p-4 text-left transition-all ${
+            side === 'yes' ? 'ring-2 ring-green-500' : ''
           }`}
         >
-          YES
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-xs font-bold text-green-600">YES</div>
+            <div className="text-xs font-bold text-gray-600">{formatPrice(priceYes)}</div>
+          </div>
+          <div className="text-2xl font-black text-gray-900">{formatPrice(priceYes)}</div>
         </button>
         <button
           onClick={() => setSide('no')}
-          className={`flex-1 rounded-md px-4 py-2 text-sm font-semibold ${
-            side === 'no'
-              ? 'bg-red-100 text-red-700 border-2 border-red-600'
-              : 'bg-gray-50 text-gray-600 border-2 border-transparent'
+          className={`bg-red-50 hover:bg-red-100 rounded-xl p-4 text-left transition-all ${
+            side === 'no' ? 'ring-2 ring-red-500' : ''
           }`}
         >
-          NO
+          <div className="flex items-center gap-2 mb-2">
+            <div className="text-xs font-bold text-red-600">NO</div>
+            <div className="text-xs font-bold text-gray-600">{formatPrice(priceNo)}</div>
+          </div>
+          <div className="text-2xl font-black text-blue-600">{formatPrice(priceNo)}</div>
         </button>
       </div>
 
-      {/* Amount Input */}
-      <div className="mb-4">
-        <div className="flex items-center justify-between mb-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Amount ({tradeMode === 'buy' ? 'USDC' : `${side.toUpperCase()} Tokens`})
-          </label>
-          {address && (
-            <button
-              type="button"
-              onClick={() => {
+      {/* Amount Input with +/- buttons */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-3">Amount</label>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              const current = parseFloat(amount) || 0;
+              const newAmount = Math.max(0, current - (tradeMode === 'buy' ? 1 : 0.1));
+              setAmount(newAmount.toFixed(tradeMode === 'buy' ? 2 : 4));
+            }}
+            className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold transition-colors"
+          >
+            −
+          </button>
+          <input
+            type="number"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+            className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-green-500"
+            placeholder="0.0"
+            step={tradeMode === 'buy' ? '0.1' : '0.01'}
+          />
+          <button
+            onClick={() => {
+              const current = parseFloat(amount) || 0;
+              const newAmount = current + (tradeMode === 'buy' ? 1 : 0.1);
+              setAmount(newAmount.toFixed(tradeMode === 'buy' ? 2 : 4));
+            }}
+            className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold transition-colors"
+          >
+            +
+          </button>
+        </div>
+      </div>
+
+      {/* Balance and Shares */}
+      <div className="flex items-center justify-between text-sm">
+        <div>
+          <span className="text-gray-500">Balance: </span>
+          <span className="font-bold text-gray-900">
+            {address 
+              ? (tradeMode === 'buy' 
+                  ? `${parseFloat(usdcBalance).toFixed(2)} USDC`
+                  : `${parseFloat(side === 'yes' ? yesBalance : noBalance).toFixed(4)} ${side.toUpperCase()}`)
+              : '--'}
+          </span>
+        </div>
+        <div>
+          <span className="text-gray-500">Shares: </span>
+          <span className="font-bold text-gray-900">
+            {address 
+              ? (side === 'yes' 
+                  ? parseFloat(yesBalance).toFixed(4)
+                  : parseFloat(noBalance).toFixed(4))
+              : '0'}
+          </span>
+        </div>
+      </div>
+
+      {/* Quick Amount Buttons */}
+      <div className="flex gap-2">
+        {quickAmounts.map((qty) => (
+          <button
+            key={qty}
+            onClick={() => {
+              if (qty === 'Max') {
                 if (tradeMode === 'buy') {
                   setAmount(usdcBalance);
                 } else {
                   const balance = side === 'yes' ? yesBalance : noBalance;
                   setAmount(balance);
                 }
-              }}
-              className="text-xs text-blue-600 hover:text-blue-700 font-medium"
-            >
-              MAX
-            </button>
-          )}
-        </div>
-        {tradeMode === 'sell' && (
-          <div className="mb-2 mt-1 rounded-md bg-blue-50 p-3 border border-blue-200">
-            <p className="text-xs font-medium text-blue-800 mb-1">
-              💰 Selling {side.toUpperCase()} tokens returns USDC
-            </p>
-            <p className="text-xs text-blue-700">
-              Direct pricing: you receive price × tokens in USDC (minus fee).
-            </p>
-          </div>
-        )}
-        <div className="relative">
-          <input
-            type="number"
-            value={amount}
-            onChange={(e) => setAmount(e.target.value)}
-            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm pr-20"
-            placeholder="0.00"
+              } else {
+                setAmount(qty);
+              }
+            }}
+            className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg py-2 px-3 text-sm font-bold transition-colors"
+          >
+            {qty}
+          </button>
+        ))}
+      </div>
+
+      {/* Set Expiration Toggle */}
+      <div className="flex items-center justify-between">
+        <span className="text-sm font-medium text-gray-700">Set Expiration</span>
+        <label className="relative inline-flex items-center cursor-pointer">
+          <input 
+            type="checkbox" 
+            className="sr-only peer" 
+            checked={setExpiration}
+            onChange={(e) => setSetExpiration(e.target.checked)}
           />
-          {address && (
-            <div className="absolute right-2 top-1/2 -translate-y-1/2 text-xs text-gray-500">
-              {tradeMode === 'buy' ? `Balance: ${parseFloat(usdcBalance).toFixed(2)} USDC` : 
-               `Balance: ${parseFloat(side === 'yes' ? yesBalance : noBalance).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 4 })} ${side.toUpperCase()}`}
-            </div>
-          )}
-        </div>
-        {estimatedOutput && (
-          <div className="mt-2 rounded-md bg-blue-50 p-2 border border-blue-200">
-            <p className="text-xs font-medium text-blue-800 mb-1">Estimated Output:</p>
-            <p className="text-sm font-semibold text-blue-900">{estimatedOutput}</p>
-          </div>
-        )}
+          <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-green-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-green-500"></div>
+        </label>
+      </div>
+
+      {/* Total */}
+      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
+        <span className="text-sm font-medium text-gray-700">Total</span>
+        <span className="text-lg font-black text-gray-900">
+          ${totalCost.toFixed(2)}
+        </span>
       </div>
 
       {/* Approve Button */}
       {address && (
         <>
-          {/* Show approval button for buy mode */}
           {needsApproval && tradeMode === 'buy' && (
             <button
               onClick={handleApprove}
               disabled={isApproving || isApprovalConfirming || isPending || isConfirming}
-              className="w-full mb-2 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
+              className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {(isApproving || isApprovalConfirming) ? 'Approving...' : 'Approve USDC'}
             </button>
           )}
-          {/* Show approval button for sell mode */}
           {needsTokenApproval && tradeMode === 'sell' && tokenAddressForSell && (
             <button
               onClick={handleApprove}
               disabled={isApproving || isApprovalConfirming || isPending || isConfirming}
-              className="w-full mb-2 rounded-md bg-blue-600 px-4 py-3 text-sm font-semibold text-white shadow-sm hover:bg-blue-500 disabled:opacity-50"
+              className="w-full rounded-lg bg-blue-600 px-4 py-3 text-sm font-bold text-white shadow-md hover:bg-blue-700 disabled:opacity-50 transition-colors"
             >
               {(isApproving || isApprovalConfirming) ? 'Approving...' : `Approve ${side.toUpperCase()} Token`}
             </button>
@@ -658,20 +708,23 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
           isApprovalConfirming || 
           needsApproval || 
           needsTokenApproval ||
-          !address
+          !address ||
+          !amount ||
+          parseFloat(amount) <= 0
         }
-        className={`w-full rounded-md px-4 py-3 text-sm font-semibold text-white shadow-sm disabled:opacity-50 ${
-          tradeMode === 'buy' 
-            ? 'bg-green-600 hover:bg-green-500' 
-            : 'bg-blue-600 hover:bg-blue-500'
-        }`}
+        className="w-full rounded-lg bg-green-500 px-4 py-4 text-base font-bold text-white shadow-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {(isPending || isConfirming) 
           ? 'Processing...' 
           : tradeMode === 'buy' 
-            ? `Buy ${side.toUpperCase()} (pay USDC)` 
-            : `Sell ${side.toUpperCase()} (receive USDC)`}
+            ? 'Buy' 
+            : 'Sell'}
       </button>
+
+      {/* Disclaimer */}
+      <p className="text-xs text-gray-500 text-center">
+        By trading, you agree to the Privacy and Terms.
+      </p>
     </div>
   );
 }

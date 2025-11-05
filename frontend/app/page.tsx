@@ -109,23 +109,16 @@ export default function Home() {
       >
         <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="flex h-20 items-center justify-between">
-            <div className="flex items-center gap-3">
-              <motion.div 
-                whileHover={{ rotate: 360, scale: 1.1 }}
-                transition={{ duration: 0.5 }}
-                className="w-10 h-10 rounded-xl overflow-hidden flex items-center justify-center shadow-lg"
-              >
-                <Image
-                  src="/logo.jpg"
-                  alt="SpeculateX Logo"
-                  width={40}
-                  height={40}
-                  className="object-contain"
-                  unoptimized
-                />
-              </motion.div>
-              <span className="text-2xl font-bold text-gray-900">SpeculateX</span>
-            </div>
+            <Link href="/" className="flex items-center">
+              <Image
+                src="/logo.jpg"
+                alt="SpeculateX Logo"
+                width={120}
+                height={32}
+                className="h-8 w-auto object-contain"
+                unoptimized
+              />
+            </Link>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
                 href="/markets"

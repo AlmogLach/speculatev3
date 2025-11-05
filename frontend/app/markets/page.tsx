@@ -12,6 +12,8 @@ import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 import { addresses } from '@/lib/contracts';
 import { usdcAbi } from '@/lib/abis';
+import { useQuery } from '@tanstack/react-query';
+import { fetchUniqueTradersCount } from '@/lib/subgraph';
 
 // Helper function to format price in cents
 const formatPriceInCents = (price: number): string => {
@@ -134,7 +136,20 @@ export default function MarketsPage() {
 
   const totalVolume = coreUsdcBalance && typeof coreUsdcBalance === 'bigint' ? parseFloat(formatUnits(coreUsdcBalance, 6)) : 0;
   const liveMarkets = markets.filter(m => m.status === 'LIVE TRADING').length;
-  const activeTraders = 234;
+  
+  // Fetch unique traders count from subgraph
+  const { data: activeTraders = 0 } = useQuery({
+    queryKey: ['uniqueTraders'],
+    queryFn: async () => {
+      try {
+        return await fetchUniqueTradersCount();
+      } catch (error) {
+        console.error('Error fetching unique traders:', error);
+        return 0;
+      }
+    },
+    refetchInterval: 60000, // Refetch every minute
+  });
 
   const categories = ['All', 'Crypto', 'Bitcoin', 'Ethereum', 'Politics', 'Sports', 'Tech', 'Finance'];
 
@@ -204,11 +219,11 @@ export default function MarketsPage() {
         </div>
 
         {/* Stats Banner - Figma Design with Logo Patterns */}
-        <div className="relative overflow-hidden bg-[#ffffffcc] rounded-2xl border-2 border-[#14B8A6] shadow-lg mb-12 translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:600ms]">
+        <div className="relative bg-white rounded-2xl border-2 border-[#14B8A6] border-solid shadow-lg mb-12 translate-y-[-1rem] animate-fade-in opacity-0 [--animation-delay:600ms] overflow-hidden" style={{ boxSizing: 'border-box', height: '155px' }}>
           {/* Left Logo */}
-          <div className="absolute left-0 top-0 w-[182px] h-[155px] pointer-events-none flex items-center justify-center">
+          <div className="absolute left-0 top-0 bottom-0 w-[182px] pointer-events-none flex items-center justify-center overflow-hidden">
             <Image
-              src="/logo.jpg"
+              src="/leftside.png"
               alt="SpeculateX Logo"
               width={182}
               height={155}
@@ -218,14 +233,14 @@ export default function MarketsPage() {
           </div>
 
           {/* Stats Content */}
-          <div className="relative z-10 flex items-center justify-center gap-16 md:gap-24 lg:gap-32 px-8 py-7 flex-wrap min-h-[155px]">
+          <div className="relative z-10 flex items-center justify-center gap-16 md:gap-24 lg:gap-32 px-8 h-full">
             {/* Total Volume */}
             <div className="flex flex-col items-center gap-4">
               <div className="font-inter text-gray-500 text-[11px] text-center tracking-[0.55px] leading-[17.6px] uppercase">
                 TOTAL VOLUME
               </div>
               <div className="font-inter text-[#0a0e17] text-[32px] text-center tracking-[0] leading-[38.4px]">
-                {totalVolume.toFixed(0)} BNB
+                {totalVolume.toFixed(0)} USDT
               </div>
               <div className="font-inter font-bold text-[#00d1b2] text-xs text-center tracking-[0] leading-[19.2px]">
                 +12%
@@ -260,9 +275,9 @@ export default function MarketsPage() {
           </div>
 
           {/* Right Logo */}
-          <div className="absolute right-0 top-0 w-[189px] h-[155px] pointer-events-none flex items-center justify-center">
+          <div className="absolute right-0 top-0 bottom-0 w-[189px] pointer-events-none flex items-center justify-center overflow-hidden">
             <Image
-              src="/logo.jpg"
+              src="/rightside.png"
               alt="SpeculateX Logo"
               width={189}
               height={155}
@@ -371,105 +386,67 @@ export default function MarketsPage() {
                     } as React.CSSProperties}
                   >
                     <Link href={`/markets/${market.id}`}>
-                      <Card className="overflow-hidden border-0 shadow-lg bg-white hover:shadow-2xl transition-all cursor-pointer h-full group">
-                        <CardContent className="p-0">
-                          <div className="group-hover:scale-[1.02] transition-transform duration-300 p-6">
-                            {/* Header */}
-                            <div className="flex items-start justify-between mb-5">
-                              <motion.div 
-                                whileHover={{ rotate: 360 }}
-                                transition={{ duration: 0.5 }}
-                                className="w-14 h-14 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-xl flex items-center justify-center text-3xl border border-[#14B8A6]/20"
-                              >
-                                {getMarketIcon(market.question)}
-                              </motion.div>
-                              <Badge
-                                variant={market.status === 'LIVE TRADING' ? 'default' : market.status === 'FUNDING' ? 'secondary' : 'outline'}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-md ${
-                                  market.status === 'LIVE TRADING' 
-                                    ? 'bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white border-0' 
-                                    : market.status === 'FUNDING'
-                                    ? 'bg-gradient-to-r from-green-400 to-green-500 text-white border-0'
-                                    : 'bg-gray-100 text-gray-700'
-                                }`}
-                              >
-                                {market.status === 'LIVE TRADING' && (
-                                  <motion.span
-                                    animate={{ scale: [1, 1.2, 1] }}
-                                    transition={{ duration: 2, repeat: Infinity }}
-                                    className="inline-block w-2 h-2 bg-white rounded-full mr-2"
-                                  />
-                                )}
-                                {market.status}
-                              </Badge>
+                      <Card className="overflow-hidden border-0 shadow-lg bg-white hover:shadow-2xl transition-all cursor-pointer h-full group rounded-2xl">
+                        <CardContent className="p-6">
+                          {/* Header - Icon and Question */}
+                          <div className="flex items-center gap-4 mb-6">
+                            <div className="w-16 h-16 bg-orange-500 rounded-full flex items-center justify-center text-white text-3xl font-bold flex-shrink-0">
+                              {getMarketIcon(market.question)}
                             </div>
-
-                            {/* Question */}
-                            <h3 className="text-lg font-bold text-gray-900 mb-5 line-clamp-2 group-hover:text-[#14B8A6] transition-colors min-h-[3.5rem]">
+                            <h3 className="text-lg font-bold text-gray-900 flex-1 line-clamp-2">
                               {market.question}
                             </h3>
-                            
-                            {/* Yes/No Prices */}
-                            <div className="grid grid-cols-2 gap-3 mb-5">
-                              <motion.div 
-                                whileHover={{ scale: 1.05 }}
-                                className="bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl p-4 border border-green-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
-                              >
-                                <div className="text-xs font-bold text-green-600 mb-2 uppercase tracking-wide">YES</div>
-                                <div className="text-2xl font-black text-green-700">{formatPriceInCents(market.yesPrice)}</div>
-                                <div className="text-xs text-green-600 mt-1 font-semibold">Price</div>
-                              </motion.div>
-                              <motion.div 
-                                whileHover={{ scale: 1.05 }}
-                                className="bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-xl p-4 border border-red-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
-                              >
-                                <div className="text-xs font-bold text-red-600 mb-2 uppercase tracking-wide">NO</div>
-                                <div className="text-2xl font-black text-red-700">{formatPriceInCents(market.noPrice)}</div>
-                                <div className="text-xs text-red-600 mt-1 font-semibold">Price</div>
-                              </motion.div>
-                            </div>
+                          </div>
 
-                            {/* Progress Bar */}
-                            <div className="mb-5">
-                              <div className="flex justify-between text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">
-                                <span>Market Sentiment</span>
+                          {/* Yes/No Buttons */}
+                          <div className="grid grid-cols-2 gap-3 mb-6">
+                            <button className="bg-green-50 hover:bg-green-100 rounded-lg py-4 px-4 text-center transition-colors">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="text-base font-bold text-green-700">Yes</div>
+                                <div className="text-xs font-bold text-gray-600">{formatPriceInCents(market.yesPrice)}</div>
                               </div>
-                              <div className="w-full bg-gray-200 rounded-full h-3 overflow-hidden shadow-inner">
-                                <div className="flex h-full">
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${market.yesPercent}%` }}
-                                    transition={{ duration: 1, delay: index * 0.05 }}
-                                    className="bg-gradient-to-r from-green-400 to-green-500"
-                                  />
-                                  <motion.div 
-                                    initial={{ width: 0 }}
-                                    animate={{ width: `${market.noPercent}%` }}
-                                    transition={{ duration: 1, delay: index * 0.05 }}
-                                    className="bg-gradient-to-r from-red-400 to-red-500"
-                                  />
-                                </div>
+                            </button>
+                            <button className="bg-red-50 hover:bg-red-100 rounded-lg py-4 px-4 text-center transition-colors">
+                              <div className="flex items-center justify-center gap-2">
+                                <div className="text-base font-bold text-red-700">No</div>
+                                <div className="text-xs font-bold text-gray-600">{formatPriceInCents(market.noPrice)}</div>
+                              </div>
+                            </button>
+                          </div>
+
+                          {/* Progress Bar - Red on left, Green on right */}
+                          <div className="mb-6">
+                            <div className="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                              <div className="flex h-full">
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${market.noPercent}%` }}
+                                  transition={{ duration: 1, delay: index * 0.05 }}
+                                  className="bg-red-500 h-full"
+                                />
+                                <motion.div 
+                                  initial={{ width: 0 }}
+                                  animate={{ width: `${market.yesPercent}%` }}
+                                  transition={{ duration: 1, delay: index * 0.05 }}
+                                  className="bg-green-500 h-full"
+                                />
                               </div>
                             </div>
+                          </div>
 
-                            {/* Volume */}
-                            <div className="pt-4 border-t border-gray-100">
-                              <div className="flex items-center justify-between text-sm">
-                                <div>
-                                  <span className="font-bold text-gray-500 uppercase tracking-wide text-xs">Volume</span>
-                                  <div className="text-lg font-black text-gray-900 mt-1">
-                                    ${market.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                  </div>
-                                </div>
-                                <motion.div
-                                  whileHover={{ scale: 1.1 }}
-                                  className="w-10 h-10 bg-[#14B8A6]/10 rounded-lg flex items-center justify-center group-hover:bg-[#14B8A6] transition-colors"
-                                >
-                                  <svg className="w-5 h-5 text-[#14B8A6] group-hover:text-white transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                                  </svg>
-                                </motion.div>
-                              </div>
+                          {/* Footer - Volume and Duration */}
+                          <div className="space-y-3 pt-4 border-t border-gray-100">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Volume</span>
+                              <span className="text-base font-bold text-gray-900">
+                                ${market.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-medium text-gray-500 uppercase tracking-wide">Durations</span>
+                              <span className="text-base font-bold text-gray-900">
+                                {Math.floor(Math.random() * 7 + 1)}D {Math.floor(Math.random() * 60)}M
+                              </span>
                             </div>
                           </div>
                         </CardContent>
