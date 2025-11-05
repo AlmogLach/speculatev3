@@ -256,39 +256,26 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
   };
 
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-6">
+    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
                 {/* Market Question */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
                     Market Question
                   </label>
-                  <div className="relative">
-                    <div className="absolute left-4 top-1/2 transform -translate-y-1/2 z-10">
-                      <div className="w-10 h-10 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-xl flex items-center justify-center text-2xl border border-[#14B8A6]/20">
-                        {question ? getMarketIcon(question) : '💵'}
-                      </div>
-                    </div>
-                    <input
-                      type="text"
-                      value={question}
-                      onChange={(e) => setQuestion(e.target.value)}
-                      placeholder="e.g., Will BTC reach $150k by 2026?"
-                      className="w-full rounded-lg border border-gray-300 pl-16 pr-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                      required
-                    />
-                  </div>
-                  <p className="mt-1 text-xs text-gray-500">Make it clear and specific. This cannot be changed later.</p>
-                  {question && (
-                    <div className="mt-2 flex items-center gap-2 text-xs text-[#14B8A6]">
-                      <span className="font-semibold">Market Icon Preview:</span>
-                      <span className="text-lg">{getMarketIcon(question)}</span>
-                    </div>
-                  )}
+                  <input
+                    type="text"
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    placeholder="e.g., Will BTC reach $150k by 2026?"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white"
+                    required
+                  />
+                  <p className="mt-1.5 text-xs text-gray-500">Make it clear and specific. This cannot be changed later.</p>
                 </div>
 
                 {/* Description */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
                     Description
                   </label>
                   <textarea
@@ -296,33 +283,27 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
                     onChange={(e) => setDescription(e.target.value)}
                     placeholder="Provide additional context or resolution criteria..."
                     rows={4}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white resize-none"
                   />
                 </div>
 
                 {/* Category */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
                     Category
                   </label>
-                  <select
+                  <input
+                    type="text"
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                  >
-                    <option value="Crypto">Crypto</option>
-                    <option value="Bitcoin">Bitcoin</option>
-                    <option value="Ethereum">Ethereum</option>
-                    <option value="Politics">Politics</option>
-                    <option value="Sports">Sports</option>
-                    <option value="Tech">Tech</option>
-                    <option value="Finance">Finance</option>
-                  </select>
+                    placeholder="Crypto"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white"
+                  />
                 </div>
 
                 {/* Resolution Date */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
                     Resolution Date
                   </label>
                   <div className="relative">
@@ -331,18 +312,18 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
                       value={resolutionDate}
                       onChange={(e) => setResolutionDate(e.target.value)}
                       min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+                      className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white"
                     />
                     <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                     </svg>
                   </div>
-                  <p className="mt-1 text-xs text-gray-500">When will this market resolve? Minimum 7 days from now.</p>
+                  <p className="mt-1.5 text-xs text-gray-500">When will this market resolve? Minimum 7 days from now.</p>
                 </div>
 
                 {/* Initial Liquidity */}
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
                     Initial Liquidity (USDC)
                   </label>
                   <input
@@ -352,7 +333,7 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
                     placeholder="e.g., 5000"
                     min="1"
                     step="1"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white"
                     required
                   />
                 </div>
@@ -527,19 +508,19 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
                 <button
                   type="submit"
                   disabled={isPending || isConfirming || !address || needsApproval}
-                  className="w-full rounded-lg bg-[#14B8A6] px-6 py-4 text-base font-semibold text-white hover:bg-[#0D9488] disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+                  className="w-full rounded-lg bg-[#2DD4BF] hover:bg-[#14B8A6] px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
                 >
                   {(isPending || isConfirming) ? (
                     <>
-                      <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white"></div>
-                      Creating Market...
+                      <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
+                      <span>Creating Market...</span>
                     </>
                   ) : (
                     <>
-                      <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
                       </svg>
-                      Create Market
+                      <span>Create Market</span>
                     </>
                   )}
                 </button>
@@ -633,10 +614,10 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
           </div>
 
           {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
             {/* Left Column - Form */}
             <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200">
+              <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-lg border border-gray-200">
                 {formContent}
               </div>
             </div>
@@ -653,10 +634,10 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
 
   // Embedded version (for admin page)
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
       {/* Left Column - Form */}
       <div className="lg:col-span-2">
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-lg border border-gray-200">
           {formContent}
         </div>
       </div>

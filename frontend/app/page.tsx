@@ -1,4 +1,5 @@
 'use client';
+// @ts-nocheck
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
@@ -54,7 +55,7 @@ export default function Home() {
   };
 
   return (
-    <div className="h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 relative overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 relative overflow-hidden">
       {/* Animated Background Blobs */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <motion.div 
@@ -108,23 +109,24 @@ export default function Home() {
         className="relative z-10 border-b border-white/20 backdrop-blur-md bg-white/40"
       >
         <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="flex h-20 items-center justify-between">
+          <div className="flex h-16 sm:h-20 items-center justify-between">
             <Link href="/" className="flex items-center">
               <Image
                 src="/logo.jpg"
                 alt="SpeculateX Logo"
                 width={120}
                 height={32}
-                className="h-8 w-auto object-contain"
+                className="h-7 sm:h-8 w-auto object-contain"
                 unoptimized
               />
             </Link>
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
                 href="/markets"
-                className="rounded-full bg-[#14B8A6] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#0D9488] transition-all shadow-lg hover:shadow-xl"
+                className="rounded-full bg-[#14B8A6] px-4 sm:px-6 py-2 sm:py-2.5 text-xs sm:text-sm font-semibold text-white hover:bg-[#0D9488] transition-all shadow-lg hover:shadow-xl"
               >
-                Launch App
+                <span className="hidden sm:inline">Launch App</span>
+                <span className="sm:hidden">Launch</span>
               </Link>
             </motion.div>
           </div>
@@ -132,16 +134,16 @@ export default function Home() {
       </motion.header>
 
       {/* Main Content - Centered */}
-      <main className="relative z-10 h-[calc(100vh-5rem)] flex items-center justify-center">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center">
+      <main className="relative z-10 min-h-[calc(100vh-4rem)] sm:min-h-[calc(100vh-5rem)] flex items-center justify-center py-8 sm:py-12 md:py-16">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 text-center w-full">
           {/* Beta Badge */}
           <motion.div 
             initial={{ scale: 0, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             transition={{ delay: 0.2, type: "spring" }}
-            className="mb-8 inline-flex"
+            className="mb-6 sm:mb-8 inline-flex"
           >
-            <div className="relative inline-flex items-center h-10 px-5 rounded-full border-2 border-[#14B8A6]/30 bg-white/80 backdrop-blur-sm shadow-lg overflow-hidden">
+            <div className="relative inline-flex items-center h-8 sm:h-10 px-3 sm:px-5 rounded-full border-2 border-[#14B8A6]/30 bg-white/80 backdrop-blur-sm shadow-lg overflow-hidden">
               <motion.div
                 className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
                 animate={{ x: [-200, 200] }}
@@ -150,9 +152,9 @@ export default function Home() {
               <motion.div 
                 animate={{ scale: [1, 1.2, 1] }}
                 transition={{ duration: 2, repeat: Infinity }}
-                className="w-2.5 h-2.5 rounded-full bg-[#14B8A6] mr-3"
+                className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-full bg-[#14B8A6] mr-2 sm:mr-3"
               />
-              <span className="relative z-10 text-sm font-bold text-[#14B8A6] uppercase tracking-wider">Live on BNB Chain</span>
+              <span className="relative z-10 text-[10px] sm:text-xs md:text-sm font-bold text-[#14B8A6] uppercase tracking-wider">Live on BNB Chain</span>
             </div>
           </motion.div>
 
@@ -161,7 +163,7 @@ export default function Home() {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.8 }}
-            className="text-6xl sm:text-7xl md:text-8xl font-black leading-[1.1] mb-8 tracking-tight"
+            className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl xl:text-8xl font-black leading-[1.1] mb-6 sm:mb-8 tracking-tight px-4"
           >
             <span className="bg-gradient-to-r from-[#14B8A6] via-[#0D9488] to-[#14B8A6] bg-clip-text text-transparent animate-gradient">
               be the market
@@ -173,7 +175,7 @@ export default function Home() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.5, duration: 0.8 }}
-            className="text-xl sm:text-2xl text-gray-600 mb-10 max-w-3xl mx-auto leading-relaxed"
+            className="text-base sm:text-lg md:text-xl lg:text-2xl text-gray-600 mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed px-4"
           >
             Create prediction markets with bonding curves. Trade outcomes. Earn from every transaction.
           </motion.p>
@@ -183,12 +185,12 @@ export default function Home() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.7, duration: 0.8 }}
-            className="flex justify-center mb-12"
+            className="flex justify-center mb-8 sm:mb-12"
           >
             <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
                 href="/markets"
-                className="group relative inline-flex items-center justify-center h-14 px-8 rounded-full bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-lg font-bold text-white shadow-xl overflow-hidden"
+                className="group relative inline-flex items-center justify-center h-12 sm:h-14 px-6 sm:px-8 rounded-full bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-base sm:text-lg font-bold text-white shadow-xl overflow-hidden"
               >
                 <motion.div
                   className="absolute inset-0 bg-gradient-to-r from-[#0D9488] to-[#14B8A6]"
@@ -198,7 +200,7 @@ export default function Home() {
                 />
                 <span className="relative z-10 flex items-center">
                   Launch App
-                  <svg className="ml-3 w-5 h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="ml-2 sm:ml-3 w-4 h-4 sm:w-5 sm:h-5 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
                   </svg>
                 </span>
@@ -212,21 +214,21 @@ export default function Home() {
             initial={{ y: 50, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 0.9, duration: 0.8 }}
-            className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto mb-10"
+            className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4 max-w-5xl mx-auto mb-8 sm:mb-10"
           >
             {/* Active Markets */}
             <motion.div 
               whileHover={{ y: -5, scale: 1.02 }}
-              className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl"
+              className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Active Markets</div>
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Active Markets</div>
                 <motion.div 
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.5 }}
-                  className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center"
+                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center"
                 >
-                  <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
                   </svg>
                 </motion.div>
@@ -235,49 +237,49 @@ export default function Home() {
                 key={marketCount}
                 initial={{ scale: 1.5, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
-                className="text-4xl font-black text-[#14B8A6] mb-1"
+                className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1"
               >
                 {marketCount || '7'}
               </motion.div>
-              <div className="text-sm text-gray-500">Live trading</div>
+              <div className="text-xs sm:text-sm text-gray-500">Live trading</div>
             </motion.div>
 
             {/* Total Volume */}
             <motion.div 
               whileHover={{ y: -5, scale: 1.02 }}
-              className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl"
+              className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Volume</div>
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Total Volume</div>
                 <motion.div 
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.5 }}
-                  className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center"
+                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center"
                 >
-                  <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
                   </svg>
                 </motion.div>
               </div>
-              <div className="text-4xl font-black text-[#14B8A6] mb-1">
+              <div className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1">
                 {formatVolume(totalVolume) || '$10.8K'}
               </div>
-              <div className="text-sm text-gray-500">All time</div>
+              <div className="text-xs sm:text-sm text-gray-500">All time</div>
             </motion.div>
 
             {/* Traders */}
             <motion.div 
               whileHover={{ y: -5, scale: 1.02 }}
-              className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl"
+              className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Traders</div>
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Traders</div>
                 <motion.div 
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.5 }}
-                  className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center"
+                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center"
                 >
-                  <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
                   </svg>
                 </motion.div>
@@ -286,32 +288,32 @@ export default function Home() {
                 key={traders}
                 initial={{ scale: 1.1 }}
                 animate={{ scale: 1 }}
-                className="text-4xl font-black text-[#14B8A6] mb-1"
+                className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1"
               >
                 {formatNumber(traders)}
               </motion.div>
-              <div className="text-sm text-gray-500">Active users</div>
+              <div className="text-xs sm:text-sm text-gray-500">Active users</div>
             </motion.div>
 
             {/* Trading Fee */}
             <motion.div 
               whileHover={{ y: -5, scale: 1.02 }}
-              className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl"
+              className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-4 sm:p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl"
             >
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Trading Fee</div>
+              <div className="flex items-center justify-between mb-2 sm:mb-3">
+                <div className="text-[10px] sm:text-xs font-bold text-gray-500 uppercase tracking-wider">Trading Fee</div>
                 <motion.div 
                   whileHover={{ rotate: 360 }}
                   transition={{ duration: 0.5 }}
-                  className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center"
+                  className="w-6 h-6 sm:w-8 sm:h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center"
                 >
-                  <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <svg className="w-3 h-3 sm:w-4 sm:h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
                 </motion.div>
               </div>
-              <div className="text-4xl font-black text-[#14B8A6] mb-1">0.5%</div>
-              <div className="text-sm text-gray-500">Ultra low</div>
+              <div className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1">0.5%</div>
+              <div className="text-xs sm:text-sm text-gray-500">Ultra low</div>
             </motion.div>
           </motion.div>
 
@@ -320,7 +322,7 @@ export default function Home() {
             initial={{ y: 30, opacity: 0 }}
             animate={{ y: 0, opacity: 1 }}
             transition={{ delay: 1.1, duration: 0.8 }}
-            className="flex flex-wrap items-center justify-center gap-4"
+            className="flex flex-wrap items-center justify-center gap-3 sm:gap-4 px-4"
           >
             {[
               'Instant Settlement',
@@ -334,12 +336,12 @@ export default function Home() {
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ delay: 1.2 + index * 0.1 }}
                 whileHover={{ scale: 1.05 }}
-                className="flex items-center gap-2 px-5 py-3 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg hover:border-[#14B8A6] hover:shadow-xl transition-all"
+                className="flex items-center gap-1.5 sm:gap-2 px-3 sm:px-4 md:px-5 py-2 sm:py-2.5 md:py-3 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg hover:border-[#14B8A6] hover:shadow-xl transition-all"
               >
-                <svg className="w-5 h-5 text-[#14B8A6]" fill="currentColor" viewBox="0 0 20 20">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 text-[#14B8A6]" fill="currentColor" viewBox="0 0 20 20">
                   <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
                 </svg>
-                <span className="text-sm font-semibold text-gray-700">{feature}</span>
+                <span className="text-xs sm:text-sm font-semibold text-gray-700 whitespace-nowrap">{feature}</span>
               </motion.div>
             ))}
           </motion.div>

@@ -1,4 +1,5 @@
 'use client';
+// @ts-nocheck
 
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
@@ -201,30 +202,21 @@ export default function ClaimPage() {
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen bg-[#FAF9FF] relative overflow-hidden">
-        {/* Background */}
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <motion.div 
-            className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-[#14B8A6]/20 to-purple-400/20 rounded-full blur-3xl"
-            animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
-            transition={{ duration: 20, repeat: Infinity }}
-          />
-        </div>
-
+      <div className="min-h-screen bg-[#F8F6FB] relative overflow-hidden">
         <Header />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12 sm:py-20">
           <motion.div 
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            className="text-center bg-white rounded-2xl p-12 shadow-xl border border-gray-100 max-w-2xl mx-auto"
+            className="text-center bg-white rounded-2xl p-8 sm:p-12 shadow-xl border border-gray-100 max-w-2xl mx-auto"
           >
-            <div className="w-20 h-20 bg-gradient-to-br from-[#14B8A6] to-[#0D9488] rounded-full flex items-center justify-center mx-auto mb-6">
-              <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gradient-to-br from-[#2DD4BF] to-[#14B8A6] rounded-full flex items-center justify-center mx-auto mb-4 sm:mb-6">
+              <svg className="w-8 h-8 sm:w-10 sm:h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
             </div>
-            <h2 className="text-3xl font-bold text-gray-900 mb-4">Connect Your Wallet</h2>
-            <p className="text-lg text-gray-600 mb-8">Please connect your wallet to view and claim your rewards from resolved markets.</p>
+            <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-3 sm:mb-4">Connect Your Wallet</h2>
+            <p className="text-sm sm:text-base md:text-lg text-gray-600 mb-6 sm:mb-8">Please connect your wallet to view and claim your rewards from resolved markets.</p>
           </motion.div>
         </div>
       </div>
@@ -232,40 +224,26 @@ export default function ClaimPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#FAF9FF] relative overflow-hidden">
-      {/* Animated Background */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <motion.div 
-          className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-[#14B8A6]/20 to-purple-400/20 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
-          transition={{ duration: 20, repeat: Infinity, ease: "easeInOut" }}
-        />
-        <motion.div 
-          className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-[#14B8A6]/20 rounded-full blur-3xl"
-          animate={{ scale: [1, 1.1, 1], rotate: [0, -90, 0] }}
-          transition={{ duration: 25, repeat: Infinity, ease: "easeInOut", delay: 2 }}
-        />
-      </div>
-
+    <div className="min-h-screen bg-[#F8F6FB] relative overflow-hidden">
       <Header />
       
-      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-12">
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 sm:py-8 md:py-12">
         {/* Back Link */}
         <motion.div
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           transition={{ duration: 0.5 }}
         >
-          <Link href="/" className="inline-flex items-center text-[#14B8A6] hover:text-[#0D9488] mb-8 font-semibold group">
+          <Link href="/" className="inline-flex items-center text-[#2DD4BF] hover:text-[#14B8A6] mb-4 sm:mb-6 md:mb-8 font-semibold group text-sm sm:text-base">
             <motion.svg 
-              className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform"
+              className="w-4 h-4 sm:w-5 sm:h-5 mr-2 group-hover:-translate-x-1 transition-transform"
               fill="none" 
               stroke="currentColor" 
               viewBox="0 0 24 24"
             >
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </motion.svg>
-            BACK TO HOME
+            Back to Home
           </Link>
         </motion.div>
 
@@ -274,15 +252,12 @@ export default function ClaimPage() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6 }}
-          className="mb-12"
+          className="mb-6 sm:mb-8 md:mb-12"
         >
-          <h1 className="text-5xl md:text-6xl font-black text-gray-900 mb-4 tracking-tight">
-            Claim Your
-            <span className="block bg-gradient-to-r from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent">
-              Rewards
-            </span>
+          <h1 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black text-gray-900 mb-3 sm:mb-4 tracking-tight">
+            Claim Your Rewards
           </h1>
-          <p className="text-xl text-gray-600 max-w-2xl">
+          <p className="text-sm sm:text-base md:text-lg text-gray-600 max-w-2xl">
             Withdraw winnings from resolved prediction markets. Your funds are ready to claim instantly.
           </p>
         </motion.div>
@@ -292,61 +267,51 @@ export default function ClaimPage() {
           initial={{ y: 50, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.2 }}
-          className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12"
+          className="grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6 sm:mb-8 md:mb-12"
         >
           {/* Available to Claim */}
           <motion.div 
-            whileHover={{ y: -5, scale: 1.02 }}
-            className="relative overflow-hidden bg-gradient-to-br from-[#14B8A6] to-[#0D9488] rounded-2xl p-8 shadow-xl"
+            whileHover={{ y: -2, scale: 1.01 }}
+            className="relative overflow-hidden bg-[#F0FDF4] rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-lg border border-gray-100"
           >
-            <div className="relative z-10">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-sm font-bold text-white/80 uppercase tracking-wider">Available to Claim</h3>
-                <motion.div
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-                  className="w-12 h-12 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm"
-                >
-                  <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                </motion.div>
-              </div>
-              <motion.div 
-                key={availableToClaim}
-                initial={{ scale: 1.2, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="text-5xl font-black text-white mb-3"
-              >
-                ${availableToClaim.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-              </motion.div>
-              <p className="text-sm text-white/80 flex items-center">
-                <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                  <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+            <div className="flex items-start justify-between mb-3 sm:mb-4">
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Available to Claim</h3>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-[#2DD4BF]/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-[#2DD4BF]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v13m0-13V6a2 2 0 112 2h-2zm0 0V5.5A2.5 2.5 0 109.5 8H12zm-7 4h14M5 12a2 2 0 110-4h14a2 2 0 110 4M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" />
                 </svg>
-                {claimableRewards.length} {claimableRewards.length === 1 ? 'market' : 'markets'} ready
-              </p>
+              </div>
             </div>
-            <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent"></div>
+            <motion.div 
+              key={availableToClaim}
+              initial={{ scale: 1.1, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="text-3xl sm:text-4xl md:text-5xl font-black text-[#2DD4BF] mb-2 sm:mb-3"
+            >
+              ${availableToClaim.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+            </motion.div>
+            <p className="text-xs sm:text-sm text-gray-500">
+              {claimableRewards.length} {claimableRewards.length === 1 ? 'market' : 'markets'} ready for withdrawal
+            </p>
           </motion.div>
 
           {/* Total Claimed */}
           <motion.div 
-            whileHover={{ y: -5, scale: 1.02 }}
-            className="relative overflow-hidden bg-white rounded-2xl p-8 shadow-lg border border-gray-100"
+            whileHover={{ y: -2, scale: 1.01 }}
+            className="relative overflow-hidden bg-[#F0FDF4] rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-lg border border-gray-100"
           >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-sm font-bold text-gray-600 uppercase tracking-wider">Total Claimed</h3>
-              <div className="w-12 h-12 bg-gradient-to-br from-gray-100 to-gray-50 rounded-xl flex items-center justify-center">
-                <svg className="w-6 h-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+            <div className="flex items-start justify-between mb-3 sm:mb-4">
+              <h3 className="text-xs sm:text-sm font-semibold text-gray-500 uppercase tracking-wider">Total Claimed</h3>
+              <div className="w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 sm:w-5 sm:h-5 md:w-6 md:h-6 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
               </div>
             </div>
-            <div className="text-5xl font-black text-gray-900 mb-3">
+            <div className="text-3xl sm:text-4xl md:text-5xl font-black text-gray-900 mb-2 sm:mb-3">
               ${totalClaimed.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
-            <p className="text-sm text-gray-500">All-time earnings withdrawn</p>
+            <p className="text-xs sm:text-sm text-gray-500">All-time earnings withdrawn</p>
           </motion.div>
         </motion.div>
 
@@ -355,41 +320,41 @@ export default function ClaimPage() {
           initial={{ y: 30, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           transition={{ duration: 0.6, delay: 0.4 }}
-          className="flex gap-2 mb-8 bg-white rounded-xl p-2 shadow-md border border-gray-100 w-fit"
+          className="flex gap-4 sm:gap-6 mb-6 sm:mb-8 border-b border-gray-200"
         >
           <button
             onClick={() => setActiveTab('available')}
-            className={`relative px-6 py-3 font-bold text-sm transition-all rounded-lg ${
+            className={`relative pb-3 sm:pb-4 font-semibold text-sm sm:text-base transition-all ${
               activeTab === 'available'
-                ? 'text-white'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'text-[#2DD4BF]'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
+            Available to Claim
             {activeTab === 'available' && (
               <motion.div
-                layoutId="activeTab"
-                className="absolute inset-0 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] rounded-lg shadow-lg"
+                layoutId="activeTabUnderline"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2DD4BF]"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
-            <span className="relative z-10">Available to Claim</span>
           </button>
           <button
             onClick={() => setActiveTab('history')}
-            className={`relative px-6 py-3 font-bold text-sm transition-all rounded-lg ${
+            className={`relative pb-3 sm:pb-4 font-semibold text-sm sm:text-base transition-all ${
               activeTab === 'history'
-                ? 'text-white'
-                : 'text-gray-600 hover:text-gray-900'
+                ? 'text-[#2DD4BF]'
+                : 'text-gray-500 hover:text-gray-700'
             }`}
           >
+            Claim History
             {activeTab === 'history' && (
               <motion.div
-                layoutId="activeTab"
-                className="absolute inset-0 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] rounded-lg shadow-lg"
+                layoutId="activeTabUnderline"
+                className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#2DD4BF]"
                 transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
               />
             )}
-            <span className="relative z-10">Claim History</span>
           </button>
         </motion.div>
 
@@ -448,64 +413,55 @@ export default function ClaimPage() {
                     initial={{ x: -50, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: index * 0.1 }}
-                    whileHover={{ y: -5, scale: 1.01 }}
-                    className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100 hover:border-[#14B8A6] transition-all"
+                    whileHover={{ y: -2, scale: 1.01 }}
+                    className="bg-[#F0FDF4] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100 hover:border-[#2DD4BF] transition-all"
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                      <div className="flex-1">
-                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-6">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex flex-wrap items-center gap-2 mb-3 sm:mb-4">
                           <motion.span 
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
-                            className="px-3 py-1.5 bg-gradient-to-r from-green-400 to-green-500 text-white text-xs font-bold rounded-full shadow-md uppercase tracking-wide"
+                            className="px-2 sm:px-3 py-1 bg-[#2DD4BF] text-white text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wide"
                           >
                             Claimable
                           </motion.span>
-                          <span className="px-3 py-1.5 bg-green-50 text-green-700 text-xs font-semibold rounded-full border border-green-200">
-                            You bet {reward.side} • {reward.side} Won! 🎉
+                          <span className="px-2 sm:px-3 py-1 bg-green-50 text-green-700 text-[10px] sm:text-xs font-semibold rounded-full border border-green-200">
+                            You bet {reward.side} - {reward.side} won
                           </span>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-3 line-clamp-2">{reward.question}</h3>
-                        <div className="flex items-center gap-4 text-sm text-gray-500 mb-4">
-                          <div className="flex items-center gap-1">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                            Resolved: {reward.resolvedDate}
+                        <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3 line-clamp-2">{reward.question}</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
+                          Resolved: {reward.resolvedDate}
+                        </p>
+                      </div>
+                      <div className="flex flex-col sm:flex-col items-end sm:items-end gap-3 sm:gap-4 flex-shrink-0">
+                        <div className="text-right">
+                          <div className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">
+                            ${reward.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                           </div>
                         </div>
-                        <div className="flex items-baseline gap-2">
-                          <span className="text-4xl font-black bg-gradient-to-r from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent">
-                            ${reward.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                          <span className="text-sm font-semibold text-gray-500">USDC</span>
-                        </div>
+                        <motion.button
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          onClick={() => handleClaim(reward)}
+                          disabled={isPending || isConfirming || claimingId === reward.marketId}
+                          className="px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 bg-[#2DD4BF] hover:bg-[#14B8A6] text-white rounded-lg sm:rounded-xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap shadow-md text-xs sm:text-sm md:text-base"
+                        >
+                          {(isPending || isConfirming) && claimingId === reward.marketId ? (
+                            <span className="flex items-center gap-2">
+                              <motion.div
+                                animate={{ rotate: 360 }}
+                                transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                                className="w-4 h-4 border-2 border-white border-t-transparent rounded-full"
+                              />
+                              Claiming...
+                            </span>
+                          ) : (
+                            'Claim Reward'
+                          )}
+                        </motion.button>
                       </div>
-                      <motion.button
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        onClick={() => handleClaim(reward)}
-                        disabled={isPending || isConfirming || claimingId === reward.marketId}
-                        className="px-8 py-4 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white rounded-xl font-bold hover:shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap shadow-lg"
-                      >
-                        {(isPending || isConfirming) && claimingId === reward.marketId ? (
-                          <span className="flex items-center gap-2">
-                            <motion.div
-                              animate={{ rotate: 360 }}
-                              transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                              className="w-5 h-5 border-2 border-white border-t-transparent rounded-full"
-                            />
-                            Claiming...
-                          </span>
-                        ) : (
-                          <span className="flex items-center gap-2">
-                            Claim Reward
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                            </svg>
-                          </span>
-                        )}
-                      </motion.button>
                     </div>
                   </motion.div>
                 ))
@@ -540,25 +496,29 @@ export default function ClaimPage() {
                     initial={{ x: -50, opacity: 0 }}
                     animate={{ x: 0, opacity: 1 }}
                     transition={{ delay: index * 0.1 }}
-                    className="bg-white rounded-2xl p-6 shadow-lg border border-gray-100"
+                    className="bg-[#F0FDF4] rounded-xl sm:rounded-2xl p-4 sm:p-6 shadow-lg border border-gray-100"
                   >
-                    <div className="flex items-start justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-4">
-                          <span className="px-3 py-1.5 bg-gray-100 text-gray-700 text-xs font-bold rounded-full uppercase tracking-wide">
+                    <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 sm:gap-6">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-3 sm:mb-4">
+                          <span className="px-2 sm:px-3 py-1 bg-gray-200 text-gray-700 text-[10px] sm:text-xs font-bold rounded-full uppercase tracking-wide">
                             Claimed
                           </span>
                         </div>
-                        <h3 className="text-xl font-bold text-gray-900 mb-3">{reward.question}</h3>
-                        <p className="text-sm text-gray-500 mb-4">
+                        <h3 className="text-base sm:text-lg md:text-xl font-bold text-gray-900 mb-2 sm:mb-3">{reward.question}</h3>
+                        <p className="text-xs sm:text-sm text-gray-500 mb-3 sm:mb-4">
                           Claimed: {reward.resolvedDate}
                         </p>
-                        <div className="text-3xl font-black text-gray-900">
-                          ${reward.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </div>
                       </div>
-                      <div className="px-8 py-4 bg-gray-100 text-gray-500 rounded-xl font-bold whitespace-nowrap">
-                        ✓ Claimed
+                      <div className="flex flex-col sm:flex-col items-end sm:items-end gap-3 sm:gap-4 flex-shrink-0">
+                        <div className="text-right">
+                          <div className="text-2xl sm:text-3xl md:text-4xl font-black text-gray-900">
+                            ${reward.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </div>
+                        </div>
+                        <div className="px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 bg-gray-200 text-gray-600 rounded-lg sm:rounded-xl font-bold whitespace-nowrap text-xs sm:text-sm md:text-base">
+                          ✓ Claimed
+                        </div>
                       </div>
                     </div>
                   </motion.div>

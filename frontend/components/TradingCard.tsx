@@ -516,12 +516,12 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
   const quickAmounts = ['10', '50', '100', 'Max'];
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* BUY/SELL Tabs */}
       <div className="flex gap-2 bg-gray-100 rounded-xl p-1">
         <button
           onClick={() => setTradeMode('buy')}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all ${
+          className={`flex-1 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all ${
             tradeMode === 'buy'
               ? 'bg-green-500 text-white shadow-md'
               : 'text-gray-600 hover:text-gray-900'
@@ -531,7 +531,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
         </button>
         <button
           onClick={() => setTradeMode('sell')}
-          className={`flex-1 rounded-lg px-4 py-2.5 text-sm font-bold transition-all ${
+          className={`flex-1 rounded-lg px-3 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm font-bold transition-all ${
             tradeMode === 'sell'
               ? 'bg-green-500 text-white shadow-md'
               : 'text-gray-600 hover:text-gray-900'
@@ -542,36 +542,36 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
       </div>
 
       {/* YES/NO Price Cards */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:gap-3">
         <button
           onClick={() => setSide('yes')}
-          className={`bg-green-50 hover:bg-green-100 rounded-xl p-4 text-left transition-all ${
+          className={`bg-green-50 hover:bg-green-100 rounded-xl p-3 sm:p-4 text-left transition-all ${
             side === 'yes' ? 'ring-2 ring-green-500' : ''
           }`}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <div className="text-xs font-bold text-green-600">YES</div>
-            <div className="text-xs font-bold text-gray-600">{formatPrice(priceYes)}</div>
+          <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+            <div className="text-[10px] sm:text-xs font-bold text-green-600">YES</div>
+            <div className="text-[10px] sm:text-xs font-bold text-gray-600">{formatPrice(priceYes)}</div>
           </div>
-          <div className="text-2xl font-black text-gray-900">{formatPrice(priceYes)}</div>
+          <div className="text-xl sm:text-2xl font-black text-gray-900">{formatPrice(priceYes)}</div>
         </button>
         <button
           onClick={() => setSide('no')}
-          className={`bg-red-50 hover:bg-red-100 rounded-xl p-4 text-left transition-all ${
+          className={`bg-red-50 hover:bg-red-100 rounded-xl p-3 sm:p-4 text-left transition-all ${
             side === 'no' ? 'ring-2 ring-red-500' : ''
           }`}
         >
-          <div className="flex items-center gap-2 mb-2">
-            <div className="text-xs font-bold text-red-600">NO</div>
-            <div className="text-xs font-bold text-gray-600">{formatPrice(priceNo)}</div>
+          <div className="flex items-center gap-1 sm:gap-2 mb-1 sm:mb-2">
+            <div className="text-[10px] sm:text-xs font-bold text-red-600">NO</div>
+            <div className="text-[10px] sm:text-xs font-bold text-gray-600">{formatPrice(priceNo)}</div>
           </div>
-          <div className="text-2xl font-black text-blue-600">{formatPrice(priceNo)}</div>
+          <div className="text-xl sm:text-2xl font-black text-blue-600">{formatPrice(priceNo)}</div>
         </button>
       </div>
 
       {/* Amount Input with +/- buttons */}
       <div>
-        <label className="block text-sm font-medium text-gray-700 mb-3">Amount</label>
+        <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-2 sm:mb-3">Amount</label>
         <div className="flex items-center gap-2">
           <button
             onClick={() => {
@@ -579,7 +579,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
               const newAmount = Math.max(0, current - (tradeMode === 'buy' ? 1 : 0.1));
               setAmount(newAmount.toFixed(tradeMode === 'buy' ? 2 : 4));
             }}
-            className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold transition-colors text-sm sm:text-base"
           >
             −
           </button>
@@ -587,7 +587,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
             type="number"
             value={amount}
             onChange={(e) => setAmount(e.target.value)}
-            className="flex-1 rounded-lg border border-gray-300 px-4 py-3 text-center text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-green-500"
+            className="flex-1 rounded-lg border border-gray-300 px-3 sm:px-4 py-2 sm:py-3 text-center text-base sm:text-lg font-semibold focus:outline-none focus:ring-2 focus:ring-green-500"
             placeholder="0.0"
             step={tradeMode === 'buy' ? '0.1' : '0.01'}
           />
@@ -597,7 +597,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
               const newAmount = current + (tradeMode === 'buy' ? 1 : 0.1);
               setAmount(newAmount.toFixed(tradeMode === 'buy' ? 2 : 4));
             }}
-            className="w-10 h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold transition-colors"
+            className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg bg-gray-100 hover:bg-gray-200 flex items-center justify-center text-gray-600 font-bold transition-colors text-sm sm:text-base"
           >
             +
           </button>
@@ -605,7 +605,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
       </div>
 
       {/* Balance and Shares */}
-      <div className="flex items-center justify-between text-sm">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-0 text-xs sm:text-sm">
         <div>
           <span className="text-gray-500">Balance: </span>
           <span className="font-bold text-gray-900">
@@ -645,7 +645,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
                 setAmount(qty);
               }
             }}
-            className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg py-2 px-3 text-sm font-bold transition-colors"
+            className="flex-1 bg-green-50 hover:bg-green-100 text-green-700 rounded-lg py-2 px-2 sm:px-3 text-xs sm:text-sm font-bold transition-colors"
           >
             {qty}
           </button>
@@ -654,7 +654,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
 
       {/* Set Expiration Toggle */}
       <div className="flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">Set Expiration</span>
+        <span className="text-xs sm:text-sm font-medium text-gray-700">Set Expiration</span>
         <label className="relative inline-flex items-center cursor-pointer">
           <input 
             type="checkbox" 
@@ -667,9 +667,9 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
       </div>
 
       {/* Total */}
-      <div className="flex items-center justify-between pt-4 border-t border-gray-200">
-        <span className="text-sm font-medium text-gray-700">Total</span>
-        <span className="text-lg font-black text-gray-900">
+      <div className="flex items-center justify-between pt-3 sm:pt-4 border-t border-gray-200">
+        <span className="text-xs sm:text-sm font-medium text-gray-700">Total</span>
+        <span className="text-base sm:text-lg font-black text-gray-900">
           ${totalCost.toFixed(2)}
         </span>
       </div>
@@ -712,7 +712,7 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
           !amount ||
           parseFloat(amount) <= 0
         }
-        className="w-full rounded-lg bg-green-500 px-4 py-4 text-base font-bold text-white shadow-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+        className="w-full rounded-lg bg-green-500 px-4 py-3 sm:py-4 text-sm sm:text-base font-bold text-white shadow-lg hover:bg-green-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
       >
         {(isPending || isConfirming) 
           ? 'Processing...' 
