@@ -16,6 +16,18 @@ import { useTransactions } from '@/lib/useTransactions';
 import { usePriceHistory, PricePoint } from '@/lib/usePriceHistory';
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
 
+// Helper function to format price in cents
+const formatPriceInCents = (price: number): string => {
+  const cents = price * 100;
+  // Remove trailing zeros and format
+  if (cents >= 100) {
+    return `$${cents.toFixed(2)}`;
+  }
+  // For values less than 100 cents, show with cent symbol
+  const formatted = cents.toFixed(1).replace(/\.0$/, '');
+  return `${formatted}¢`;
+};
+
 // Enhanced Price Chart Component
 function PriceChart({ data, selectedSide }: { data: PricePoint[]; selectedSide: 'yes' | 'no' }) {
   const [chartKey, setChartKey] = useState(0);
@@ -104,12 +116,12 @@ function PriceChart({ data, selectedSide }: { data: PricePoint[]; selectedSide: 
             <div className="flex items-center gap-2">
               <div className={`w-3 h-3 rounded-full ${selectedSide === 'yes' ? 'ring-2 ring-green-500 ring-offset-1' : ''} bg-green-500`}></div>
               <span className="text-sm font-semibold text-gray-700">YES:</span>
-              <span className={`text-sm font-bold ${selectedSide === 'yes' ? 'text-green-600' : 'text-green-500/70'}`}>${data.priceYes.toFixed(2)}</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <div className={`w-3 h-3 rounded-full ${selectedSide === 'no' ? 'ring-2 ring-red-500 ring-offset-1' : ''} bg-red-500`}></div>
-              <span className="text-sm font-semibold text-gray-700">NO:</span>
-              <span className={`text-sm font-bold ${selectedSide === 'no' ? 'text-red-600' : 'text-red-500/70'}`}>${data.priceNo.toFixed(2)}</span>
+                          <span className={`text-sm font-bold ${selectedSide === 'yes' ? 'text-green-600' : 'text-green-500/70'}`}>{formatPriceInCents(data.priceYes)}</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-3 h-3 rounded-full ${selectedSide === 'no' ? 'ring-2 ring-red-500 ring-offset-1' : ''} bg-red-500`}></div>
+                          <span className="text-sm font-semibold text-gray-700">NO:</span>
+                          <span className={`text-sm font-bold ${selectedSide === 'no' ? 'text-red-600' : 'text-red-500/70'}`}>{formatPriceInCents(data.priceNo)}</span>
             </div>
           </div>
         </div>
@@ -118,7 +130,7 @@ function PriceChart({ data, selectedSide }: { data: PricePoint[]; selectedSide: 
     return null;
   };
 
-  const formatYAxis = (value: number) => `$${value.toFixed(2)}`;
+  const formatYAxis = (value: number) => formatPriceInCents(value);
 
   // Sort data by timestamp to ensure chronological order
   const sortedChartData = [...chartData].sort((a, b) => a.timestamp - b.timestamp);
@@ -162,7 +174,7 @@ function PriceChart({ data, selectedSide }: { data: PricePoint[]; selectedSide: 
           tickLine={false}
           tick={{ fill: '#6b7280', fontSize: 10, fontWeight: 500 }}
           tickFormatter={formatYAxis}
-          width={60}
+          width={70}
         />
         <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#9ca3af', strokeWidth: 1, strokeDasharray: '3 3', opacity: 0.3 }} />
         {/* YES Line - Always visible, bold when selected */}
@@ -610,7 +622,7 @@ export default function MarketDetailPage() {
                           : 'bg-gradient-to-r from-red-500 to-red-600'
                       }`}
                     >
-                      ${(chartSide === 'yes' ? priceYes : priceNo).toFixed(2)}
+                      {formatPriceInCents(chartSide === 'yes' ? priceYes : priceNo)}
                     </motion.div>
                     <motion.div 
                       key={chanceChangePercent}
@@ -637,7 +649,7 @@ export default function MarketDetailPage() {
                     <div className="flex flex-col items-center">
                       <span>YES</span>
                       <span className={`text-xs mt-1 ${chartSide === 'yes' ? 'text-white/80' : 'text-gray-500'}`}>
-                        ${priceYes.toFixed(2)}
+                        {formatPriceInCents(priceYes)}
                       </span>
                     </div>
                   </motion.button>
@@ -654,7 +666,7 @@ export default function MarketDetailPage() {
                     <div className="flex flex-col items-center">
                       <span>NO</span>
                       <span className={`text-xs mt-1 ${chartSide === 'no' ? 'text-white/80' : 'text-gray-500'}`}>
-                        ${priceNo.toFixed(2)}
+                        {formatPriceInCents(priceNo)}
                       </span>
                     </div>
                   </motion.button>

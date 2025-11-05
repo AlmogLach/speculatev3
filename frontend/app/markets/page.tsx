@@ -10,6 +10,18 @@ import { useReadContract } from 'wagmi';
 import { addresses } from '@/lib/contracts';
 import { usdcAbi } from '@/lib/abis';
 
+// Helper function to format price in cents
+const formatPriceInCents = (price: number): string => {
+  const cents = price * 100;
+  // Remove trailing zeros and format
+  if (cents >= 100) {
+    return `$${cents.toFixed(2)}`;
+  }
+  // For values less than 100 cents, show with cent symbol
+  const formatted = cents.toFixed(1).replace(/\.0$/, '');
+  return `${formatted}¢`;
+};
+
 interface MarketCard {
   id: number;
   question: string;
@@ -445,7 +457,7 @@ export default function MarketsPage() {
                             className="bg-gradient-to-br from-green-50 to-green-100 hover:from-green-100 hover:to-green-200 rounded-xl p-4 border border-green-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
                           >
                             <div className="text-xs font-bold text-green-600 mb-2 uppercase tracking-wide">YES</div>
-                            <div className="text-2xl font-black text-green-700">{market.yesPrice.toFixed(2)}</div>
+                            <div className="text-2xl font-black text-green-700">{formatPriceInCents(market.yesPrice)}</div>
                             <div className="text-xs text-green-600 mt-1 font-semibold">Price</div>
                           </motion.div>
                           <motion.div 
@@ -453,7 +465,7 @@ export default function MarketsPage() {
                             className="bg-gradient-to-br from-red-50 to-red-100 hover:from-red-100 hover:to-red-200 rounded-xl p-4 border border-red-200 text-center transition-all cursor-pointer shadow-sm hover:shadow-md"
                           >
                             <div className="text-xs font-bold text-red-600 mb-2 uppercase tracking-wide">NO</div>
-                            <div className="text-2xl font-black text-red-700">{market.noPrice.toFixed(2)}</div>
+                            <div className="text-2xl font-black text-red-700">{formatPriceInCents(market.noPrice)}</div>
                             <div className="text-xs text-red-600 mt-1 font-semibold">Price</div>
                           </motion.div>
                         </div>
