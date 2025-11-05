@@ -4,6 +4,7 @@ import { ConnectButton } from '@rainbow-me/rainbowkit';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useAccount } from 'wagmi';
+import Image from 'next/image';
 
 export default function Header() {
   const pathname = usePathname();
@@ -164,10 +165,12 @@ export default function Header() {
                                     }}
                                   >
                                     {chain.iconUrl && (
-                                      <img
+                                      <Image
                                         alt={chain.name ?? 'Chain icon'}
                                         src={chain.iconUrl}
-                                        style={{ width: 20, height: 20 }}
+                                        width={20}
+                                        height={20}
+                                        unoptimized
                                       />
                                     )}
                                   </div>

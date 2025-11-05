@@ -339,7 +339,7 @@ export default function MarketDetailPage() {
           >
             <div className="text-6xl mb-4">❌</div>
             <h2 className="text-2xl font-bold text-gray-900 mb-2">Market Not Found</h2>
-            <p className="text-gray-600 mb-6">The market you're looking for doesn't exist.</p>
+            <p className="text-gray-600 mb-6">The market you&apos;re looking for doesn&apos;t exist.</p>
             <Link
               href="/markets"
               className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white font-bold rounded-lg hover:shadow-lg transition-all"
