@@ -4,12 +4,191 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAccount, useReadContract } from 'wagmi';
 import Link from 'next/link';
+import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
 import TradingCard from '@/components/TradingCard';
 import { getMarket, getPriceYes, getPriceNo } from '@/lib/hooks';
 import { formatUnits } from 'viem';
 import { addresses } from '@/lib/contracts';
 import { positionTokenAbi } from '@/lib/abis';
+import { useTopHolders } from '@/lib/useTopHolders';
+import { useTransactions } from '@/lib/useTransactions';
+import { usePriceHistory, PricePoint } from '@/lib/usePriceHistory';
+import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Line, ComposedChart } from 'recharts';
+
+// Enhanced Price Chart Component
+function PriceChart({ data }: { data: PricePoint[] }) {
+  const [chartKey, setChartKey] = useState(0);
+  
+  // Debug logging and force re-render when data changes
+  useEffect(() => {
+    console.log('[PriceChart] Data received:', {
+      length: data.length,
+      sample: data.slice(0, 3),
+      allPrices: data.map(d => d.price),
+    });
+    // Force chart to re-render when data changes
+    setChartKey(prev => prev + 1);
+  }, [data]);
+
+  if (data.length === 0) {
+    return (
+      <motion.div 
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        className="flex items-center justify-center h-full"
+      >
+        <div className="text-center">
+          <motion.div
+            animate={{ scale: [1, 1.1, 1] }}
+            transition={{ duration: 2, repeat: Infinity }}
+            className="w-16 h-16 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-full flex items-center justify-center mx-auto mb-4"
+          >
+            <svg className="w-8 h-8 text-[#14B8A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+            </svg>
+          </motion.div>
+          <div className="text-sm font-semibold text-gray-600 mb-1">No price data available</div>
+          <div className="text-xs text-gray-400">Price history will appear after trades</div>
+        </div>
+      </motion.div>
+    );
+  }
+
+  const chartData = data.map(point => {
+    const date = new Date(point.timestamp * 1000);
+    return {
+      time: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit' }),
+      price: point.price * 100, // Convert to percentage
+      priceDecimal: point.price,
+      timestamp: point.timestamp,
+      fullDate: date.toISOString(),
+    };
+  });
+
+  console.log('[PriceChart] Chart data prepared:', {
+    length: chartData.length,
+    sample: chartData.slice(0, 3),
+    priceRange: [Math.min(...chartData.map(d => d.price)), Math.max(...chartData.map(d => d.price))],
+  });
+
+  const prices = data.map(d => d.price * 100);
+  const minPrice = Math.min(...prices);
+  const maxPrice = Math.max(...prices);
+  const priceRange = maxPrice - minPrice;
+  
+  let domain: [number, number];
+  if (priceRange === 0) {
+    const center = minPrice;
+    domain = [Math.max(0, center - 5), Math.min(100, center + 5)];
+  } else {
+    const padding = priceRange * 0.15;
+    domain = [
+      Math.max(0, minPrice - padding),
+      Math.min(100, maxPrice + padding)
+    ];
+  }
+
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (active && payload && payload.length) {
+      const data = payload[0].payload;
+      const isPositive = data.price >= 50;
+      return (
+        <motion.div
+          initial={{ scale: 0.8, opacity: 0 }}
+          animate={{ scale: 1, opacity: 1 }}
+          className="bg-white p-4 rounded-xl shadow-2xl border border-gray-200"
+        >
+          <p className={`text-lg font-black mb-2 ${isPositive ? 'text-[#14B8A6]' : 'text-red-500'}`}>
+            {data.price.toFixed(2)}%
+          </p>
+          <p className="text-xs font-semibold text-gray-700 mb-1">
+            ${data.priceDecimal.toFixed(4)} per share
+          </p>
+          <p className="text-xs text-gray-500">
+            {new Date(data.timestamp * 1000).toLocaleString()}
+          </p>
+        </motion.div>
+      );
+    }
+    return null;
+  };
+
+  const formatYAxis = (value: number) => `${value.toFixed(0)}%`;
+
+  // Sort data by timestamp to ensure chronological order
+  const sortedChartData = [...chartData].sort((a, b) => a.timestamp - b.timestamp);
+
+  return (
+    <div className="w-full h-full" style={{ minHeight: '280px' }}>
+      <ResponsiveContainer width="100%" height="100%">
+        <ComposedChart
+          key={chartKey}
+          data={sortedChartData}
+          margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
+        >
+        <defs>
+          <linearGradient id="priceGradient" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="5%" stopColor="#14B8A6" stopOpacity={0.4} />
+            <stop offset="50%" stopColor="#14B8A6" stopOpacity={0.2} />
+            <stop offset="95%" stopColor="#14B8A6" stopOpacity={0.05} />
+          </linearGradient>
+          <linearGradient id="lineGradient" x1="0" y1="0" x2="1" y2="0">
+            <stop offset="0%" stopColor="#14B8A6" />
+            <stop offset="50%" stopColor="#0D9488" />
+            <stop offset="100%" stopColor="#14B8A6" />
+          </linearGradient>
+        </defs>
+        <CartesianGrid 
+          strokeDasharray="3 3" 
+          stroke="#e5e7eb" 
+          vertical={false}
+          strokeWidth={1}
+          opacity={0.5}
+        />
+        <XAxis
+          dataKey="time"
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 600 }}
+          interval="preserveStartEnd"
+          minTickGap={50}
+        />
+        <YAxis
+          domain={domain}
+          axisLine={false}
+          tickLine={false}
+          tick={{ fill: '#9ca3af', fontSize: 11, fontWeight: 600 }}
+          tickFormatter={formatYAxis}
+          width={55}
+        />
+        <Tooltip content={<CustomTooltip />} cursor={{ stroke: '#14B8A6', strokeWidth: 2, strokeDasharray: '5 5' }} />
+        <Area
+          type="monotone"
+          dataKey="price"
+          stroke="none"
+          fill="url(#priceGradient)"
+          fillOpacity={1}
+        />
+        <Line
+          type="monotone"
+          dataKey="price"
+          stroke="url(#lineGradient)"
+          strokeWidth={3}
+          dot={false}
+          activeDot={{ 
+            r: 8, 
+            fill: '#14B8A6', 
+            stroke: '#fff', 
+            strokeWidth: 3,
+            filter: 'drop-shadow(0 0 8px rgba(20, 184, 166, 0.5))'
+          }}
+        />
+      </ComposedChart>
+    </ResponsiveContainer>
+    </div>
+  );
+}
 
 export default function MarketDetailPage() {
   const params = useParams();
@@ -25,6 +204,26 @@ export default function MarketDetailPage() {
   const [timeRange, setTimeRange] = useState<'1D' | '1W' | '1M' | 'ALL'>('1W');
   const [yesBalance, setYesBalance] = useState<string>('0');
   const [noBalance, setNoBalance] = useState<string>('0');
+  
+  const { data: topHoldersYes = [] } = useTopHolders(
+    marketId ? parseInt(marketId) : null,
+    priceYes,
+    'yes'
+  );
+  const { data: topHoldersNo = [] } = useTopHolders(
+    marketId ? parseInt(marketId) : null,
+    priceNo,
+    'no'
+  );
+  
+  const { data: transactions = [], isLoading: transactionsLoading } = useTransactions(
+    marketId ? parseInt(marketId) : null
+  );
+
+  const { data: priceHistory = [], isLoading: historyLoading } = usePriceHistory(
+    marketId ? parseInt(marketId) : null,
+    timeRange
+  );
 
   const loadMarket = useCallback(async () => {
     if (!marketId) return;
@@ -49,7 +248,6 @@ export default function MarketDetailPage() {
     }
   }, [marketId, loadMarket]);
 
-  // Get user token balances
   const { data: yesBal } = useReadContract({
     address: market?.yes as `0x${string}` | undefined,
     abi: positionTokenAbi,
@@ -79,15 +277,23 @@ export default function MarketDetailPage() {
     }
   }, [yesBal, noBal]);
 
-  // Calculate chance percentage
   const chancePercentage = priceYes * 100;
-  const previousChance = 70.35; // Placeholder - would need historical data
-  const chanceChange = chancePercentage - previousChance;
+  
+  // Calculate actual change from price history
+  // Compare current price with the earliest price in the selected time range
+  let chanceChange = 0;
+  if (priceHistory.length > 0) {
+    // Sort by timestamp (oldest first) to get the first price in the time range
+    const sortedHistory = [...priceHistory].sort((a, b) => a.timestamp - b.timestamp);
+    const firstPrice = sortedHistory[0].price * 100;
+    chanceChange = chancePercentage - firstPrice;
+  } else {
+    // No price history yet, show 0 change
+    chanceChange = 0;
+  }
 
-  // Calculate total volume
   const totalVolume = market?.totalPairsUSDC ? Number(formatUnits(market.totalPairsUSDC as bigint, 6)) : 0;
 
-  // Get asset icon
   const getAssetIcon = (question: string) => {
     if (question.includes('BTC') || question.includes('Bitcoin')) return '₿';
     if (question.includes('ETH') || question.includes('Ethereum')) return 'Ξ';
@@ -100,13 +306,22 @@ export default function MarketDetailPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FAF9FF]">
+      <div className="min-h-screen bg-[#FAF9FF] relative overflow-hidden">
+        <div className="absolute inset-0 overflow-hidden pointer-events-none">
+          <motion.div 
+            className="absolute top-0 right-0 w-96 h-96 bg-gradient-to-br from-[#14B8A6]/20 to-purple-400/20 rounded-full blur-3xl"
+            animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+            transition={{ duration: 20, repeat: Infinity }}
+          />
+        </div>
         <Header />
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-          <div className="text-center py-12">
-            <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#14B8A6]"></div>
-            <p className="mt-4 text-gray-600">Loading market...</p>
-          </div>
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+          <motion.div
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+            className="inline-block w-16 h-16 border-4 border-[#14B8A6] border-t-transparent rounded-full mx-auto"
+          />
+          <p className="mt-6 text-lg font-semibold text-gray-600 text-center">Loading market...</p>
         </div>
       </div>
     );
@@ -116,8 +331,22 @@ export default function MarketDetailPage() {
     return (
       <div className="min-h-screen bg-[#FAF9FF]">
         <Header />
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-          <p className="text-red-600">Market not found</p>
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20">
+          <motion.div 
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            className="text-center bg-white rounded-2xl p-12 shadow-xl"
+          >
+            <div className="text-6xl mb-4">❌</div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">Market Not Found</h2>
+            <p className="text-gray-600 mb-6">The market you're looking for doesn't exist.</p>
+            <Link
+              href="/markets"
+              className="inline-flex items-center px-6 py-3 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white font-bold rounded-lg hover:shadow-lg transition-all"
+            >
+              Back to Markets
+            </Link>
+          </motion.div>
         </div>
       </div>
     );
@@ -127,437 +356,556 @@ export default function MarketDetailPage() {
   const isLive = statusNum === 0;
 
   return (
-    <div className="min-h-screen bg-[#FAF9FF]">
+    <div className="min-h-screen bg-[#FAF9FF] relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        <motion.div 
+          className="absolute -top-40 -right-40 w-96 h-96 bg-gradient-to-br from-[#14B8A6]/20 to-purple-400/20 rounded-full blur-3xl"
+          animate={{ scale: [1, 1.2, 1], rotate: [0, 90, 0] }}
+          transition={{ duration: 20, repeat: Infinity }}
+        />
+        <motion.div 
+          className="absolute -bottom-40 -left-40 w-96 h-96 bg-gradient-to-br from-blue-400/20 to-[#14B8A6]/20 rounded-full blur-3xl"
+          animate={{ scale: [1, 1.1, 1], rotate: [0, -90, 0] }}
+          transition={{ duration: 25, repeat: Infinity, delay: 2 }}
+        />
+      </div>
+
       <Header />
-      <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      
+      <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
         {/* Back Link */}
-        <Link href="/markets" className="inline-flex items-center text-[#14B8A6] hover:text-[#0D9488] mb-6">
-          <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-          </svg>
-          Back to Markets
-        </Link>
+        <motion.div
+          initial={{ x: -20, opacity: 0 }}
+          animate={{ x: 0, opacity: 1 }}
+        >
+          <Link href="/markets" className="inline-flex items-center text-[#14B8A6] hover:text-[#0D9488] mb-6 font-semibold group">
+            <motion.svg 
+              className="w-5 h-5 mr-2 group-hover:-translate-x-1 transition-transform"
+              fill="none" stroke="currentColor" viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </motion.svg>
+            BACK TO MARKETS
+          </Link>
+        </motion.div>
 
         {/* Market Header Card */}
-        <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200 mb-6">
-          <div className="flex items-start justify-between mb-4">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-orange-100 rounded-full flex items-center justify-center">
-                <span className="text-2xl font-bold text-orange-600">{getAssetIcon(market.question as string)}</span>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold text-gray-900 mb-2">{market.question}</h1>
-                <div className="flex items-center gap-4">
-                  <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-semibold ${
-                    isLive ? 'bg-red-100 text-red-700' : 'bg-gray-100 text-gray-700'
-                  }`}>
-                    • {isLive ? 'LIVE' : 'CLOSED'}
-                  </span>
-                  <span className="text-sm text-gray-600">
+        <motion.div 
+          initial={{ y: 30, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ duration: 0.6 }}
+          className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100 mb-8"
+        >
+          <div className="flex items-start justify-between mb-6">
+            <div className="flex items-center gap-6 flex-1">
+              <motion.div 
+                whileHover={{ rotate: 360 }}
+                transition={{ duration: 0.5 }}
+                className="w-16 h-16 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-2xl flex items-center justify-center border border-[#14B8A6]/20"
+              >
+                <span className="text-3xl">{getAssetIcon(market.question as string)}</span>
+              </motion.div>
+              <div className="flex-1">
+                <h1 className="text-3xl font-black text-gray-900 mb-3">{market.question}</h1>
+                <div className="flex flex-wrap items-center gap-4">
+                  <motion.span 
+                    initial={{ scale: 0 }}
+                    animate={{ scale: 1 }}
+                    className={`inline-flex items-center px-3 py-1.5 rounded-full text-xs font-bold uppercase tracking-wide shadow-md ${
+                      isLive ? 'bg-gradient-to-r from-red-400 to-red-500 text-white' : 'bg-gray-100 text-gray-700'
+                    }`}
+                  >
+                    {isLive && (
+                      <motion.span
+                        animate={{ scale: [1, 1.3, 1] }}
+                        transition={{ duration: 2, repeat: Infinity }}
+                        className="w-2 h-2 bg-white rounded-full mr-2"
+                      />
+                    )}
+                    {isLive ? 'LIVE' : 'CLOSED'}
+                  </motion.span>
+                  <span className="text-sm font-semibold text-gray-600">
                     Vol ${totalVolume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                   </span>
-                  <span className="text-sm text-gray-500">• Jan 1, 2026</span>
+                  <span className="text-sm text-gray-500">• Ends Jan 1, 2026</span>
                 </div>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              <motion.button 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
+              >
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" />
                 </svg>
-              </button>
-              <button className="p-2 hover:bg-gray-100 rounded-lg transition-colors">
+              </motion.button>
+              <motion.button 
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.9 }}
+                className="p-3 hover:bg-gray-100 rounded-xl transition-colors"
+              >
                 <svg className="w-5 h-5 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 5v.01M12 12v.01M12 19v.01M12 6a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2zm0 7a1 1 0 110-2 1 1 0 010 2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z" />
                 </svg>
-              </button>
+              </motion.button>
             </div>
           </div>
 
           {/* Rules Section */}
-          <div className="mt-4 pt-4 border-t border-gray-200">
-            <h3 className="text-sm font-semibold text-gray-900 mb-2">Rules</h3>
-            <p className="text-sm text-gray-600">
-              Bitcoin price target of $100,000 USD by end of 2026. Resolution based on Coinbase spot price at market close on December 31, 2026.
-            </p>
-          </div>
-        </div>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+            className="mt-6 pt-6 border-t border-gray-200"
+          >
+            <div className="flex items-start gap-3">
+              <div className="w-8 h-8 bg-[#14B8A6]/10 rounded-lg flex items-center justify-center flex-shrink-0">
+                <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+              </div>
+              <div className="flex-1">
+                <h3 className="text-sm font-bold text-gray-900 mb-2 uppercase tracking-wide">Resolution Rules</h3>
+                <p className="text-sm text-gray-600 leading-relaxed">
+                  Bitcoin price target of $100,000 USD by end of 2026. Resolution based on Coinbase spot price at market close on December 31, 2026.
+                </p>
+              </div>
+            </div>
+          </motion.div>
+        </motion.div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
           {/* Left Column - Market Chance & Graph */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Chance Display Card */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <div className="flex items-center justify-between mb-6">
+          <div className="lg:col-span-2 space-y-8">
+            {/* Chance Display & Chart Card */}
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+              className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100"
+            >
+              <div className="flex items-center justify-between mb-8">
                 <div>
-                  <div className="text-sm text-gray-600 mb-1">Chance</div>
-                  <div className="flex items-baseline gap-3">
-                    <div className="text-5xl font-bold text-green-600">{chancePercentage.toFixed(1)}%</div>
-                    <div className={`text-lg font-semibold ${chanceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                  <div className="text-sm font-bold text-gray-500 mb-2 uppercase tracking-wider">Market Probability</div>
+                  <div className="flex items-baseline gap-4">
+                    <motion.div 
+                      key={chancePercentage}
+                      initial={{ scale: 1.2, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="text-6xl font-black bg-gradient-to-r from-[#14B8A6] to-[#0D9488] bg-clip-text text-transparent"
+                    >
+                      {chancePercentage.toFixed(1)}%
+                    </motion.div>
+                    <motion.div 
+                      initial={{ x: -10, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.2 }}
+                      className={`flex items-center text-xl font-bold ${chanceChange >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    >
                       {chanceChange >= 0 ? '↑' : '↓'} {Math.abs(chanceChange).toFixed(2)}%
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
-                <div className="flex gap-2">
-                  <button className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                    holderTab === 'yes' 
-                      ? 'bg-green-600 text-white' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}>
+                <div className="flex gap-3">
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setHolderTab('yes')}
+                    className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg ${
+                      holderTab === 'yes' 
+                        ? 'bg-gradient-to-r from-green-400 to-green-500 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
                     YES
-                  </button>
-                  <button className={`px-6 py-3 rounded-lg font-semibold transition-colors ${
-                    holderTab === 'no' 
-                      ? 'bg-red-600 text-white' 
-                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                  }`}>
+                  </motion.button>
+                  <motion.button 
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={() => setHolderTab('no')}
+                    className={`px-8 py-4 rounded-xl font-bold transition-all shadow-lg ${
+                      holderTab === 'no' 
+                        ? 'bg-gradient-to-r from-red-400 to-red-500 text-white' 
+                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                    }`}
+                  >
                     NO
-                  </button>
+                  </motion.button>
                 </div>
               </div>
 
-              {/* Graph Placeholder */}
-              <div className="mb-4">
-                <div className="h-64 bg-gray-50 rounded-lg border border-gray-200 flex items-center justify-center relative">
-                  <svg className="w-full h-full" viewBox="0 0 400 200" preserveAspectRatio="none">
-                    {/* Axes */}
-                    <line x1="40" y1="160" x2="360" y2="160" stroke="#e5e7eb" strokeWidth="2" />
-                    <line x1="40" y1="160" x2="40" y2="40" stroke="#e5e7eb" strokeWidth="2" />
-                    {/* Y-axis labels */}
-                    <text x="35" y="45" fill="#9ca3af" fontSize="10" textAnchor="end">0.8</text>
-                    <text x="35" y="85" fill="#9ca3af" fontSize="10" textAnchor="end">0.6</text>
-                    <text x="35" y="125" fill="#9ca3af" fontSize="10" textAnchor="end">0.4</text>
-                    <text x="35" y="165" fill="#9ca3af" fontSize="10" textAnchor="end">0</text>
-                    {/* X-axis labels */}
-                    <text x="60" y="175" fill="#9ca3af" fontSize="10" textAnchor="middle">Oct 31</text>
-                    <text x="140" y="175" fill="#9ca3af" fontSize="10" textAnchor="middle">Nov 2</text>
-                    <text x="220" y="175" fill="#9ca3af" fontSize="10" textAnchor="middle">Nov 4</text>
-                    <text x="300" y="175" fill="#9ca3af" fontSize="10" textAnchor="middle">Nov 7</text>
-                    {/* Line chart */}
-                    <polyline
-                      points="60,140 100,130 140,110 180,90 220,70 260,60 300,50"
-                      fill="none"
-                      stroke="#14B8A6"
-                      strokeWidth="3"
-                    />
-                    {/* Data points */}
-                    <circle cx="60" cy="140" r="4" fill="#14B8A6" />
-                    <circle cx="100" cy="130" r="4" fill="#14B8A6" />
-                    <circle cx="140" cy="110" r="4" fill="#14B8A6" />
-                    <circle cx="180" cy="90" r="4" fill="#14B8A6" />
-                    <circle cx="220" cy="70" r="4" fill="#14B8A6" />
-                    <circle cx="260" cy="60" r="4" fill="#14B8A6" />
-                    <circle cx="300" cy="50" r="4" fill="#14B8A6" />
-                  </svg>
+              {/* Enhanced Price History Graph */}
+              <div className="mb-6">
+                <div className="h-80 bg-gradient-to-br from-gray-50 to-white rounded-2xl border-2 border-gray-100 p-6 relative overflow-hidden shadow-inner flex items-center justify-center">
+                  {historyLoading ? (
+                    <div className="flex items-center justify-center h-full w-full">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                        className="w-12 h-12 border-4 border-[#14B8A6] border-t-transparent rounded-full"
+                      />
+                    </div>
+                  ) : (
+                    <div className="w-full h-full">
+                      <PriceChart key={`${marketId}-${timeRange}-${priceHistory.length}`} data={priceHistory} />
+                    </div>
+                  )}
                 </div>
               </div>
 
               {/* Time Range Filters */}
-              <div className="flex gap-2">
-                {(['1D', '1W', '1M', 'ALL'] as const).map((range) => (
-                  <button
+              <div className="flex gap-3">
+                {(['1D', '1W', '1M', 'ALL'] as const).map((range, index) => (
+                  <motion.button
                     key={range}
+                    initial={{ scale: 0, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: 0.4 + index * 0.05 }}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
                     onClick={() => setTimeRange(range)}
-                    className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                    className={`flex-1 px-6 py-3 rounded-xl text-sm font-bold transition-all shadow-md ${
                       timeRange === range
-                        ? 'bg-[#14B8A6] text-white'
-                        : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                        ? 'bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-white shadow-lg'
+                        : 'bg-white text-gray-700 hover:bg-gray-50 border-2 border-gray-200'
                     }`}
                   >
                     {range}
-                  </button>
+                  </motion.button>
                 ))}
               </div>
-            </div>
+            </motion.div>
 
-            {/* Resolution Details */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <div className="flex gap-4 mb-6 border-b border-gray-200">
+            {/* Tabs Section */}
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+              className="bg-white rounded-2xl p-8 shadow-xl border border-gray-100"
+            >
+              <div className="flex gap-2 mb-8 bg-gray-50 rounded-xl p-2">
                 {(['Position', 'Orders', 'Transactions', 'Resolution'] as const).map((tab) => (
                   <button
                     key={tab}
                     onClick={() => setActiveTab(tab)}
-                    className={`pb-3 px-4 font-semibold text-sm transition-colors ${
+                    className={`relative flex-1 px-6 py-3 font-bold text-sm transition-all rounded-lg ${
                       activeTab === tab
-                        ? 'text-[#14B8A6] border-b-2 border-[#14B8A6]'
+                        ? 'text-white'
                         : 'text-gray-600 hover:text-gray-900'
                     }`}
                   >
-                    {tab}
+                    {activeTab === tab && (
+                      <motion.div
+                        layoutId="activeTabIndicator"
+                        className="absolute inset-0 bg-gradient-to-r from-[#14B8A6] to-[#0D9488] rounded-lg shadow-lg"
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
+                    <span className="relative z-10">{tab}</span>
                   </button>
                 ))}
               </div>
 
-              {activeTab === 'Resolution' && (
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="text-sm font-semibold text-gray-900 mb-2">RESOLUTION CRITERIA</h4>
-                    <p className="text-sm text-gray-600">
-                      Market resolves YES if Bitcoin reaches $100,000 USD on Coinbase spot price by end of trading day December 31, 2026. Otherwise resolves NO.
-                    </p>
-                  </div>
-                  <div className="grid grid-cols-2 gap-4 pt-4 border-t border-gray-200">
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1">Resolution Source</div>
-                      <div className="text-sm font-semibold text-gray-900">Coinbase</div>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={activeTab}
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -20 }}
+                  transition={{ duration: 0.3 }}
+                >
+                  {activeTab === 'Resolution' && (
+                    <div className="space-y-6">
+                      <div className="p-6 bg-gradient-to-br from-[#14B8A6]/5 to-[#14B8A6]/10 rounded-xl border border-[#14B8A6]/20">
+                        <h4 className="text-sm font-bold text-gray-900 mb-3 uppercase tracking-wide flex items-center gap-2">
+                          <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          Resolution Criteria
+                        </h4>
+                        <p className="text-sm text-gray-700 leading-relaxed">
+                          Market resolves YES if Bitcoin reaches $100,000 USD on Coinbase spot price by end of trading day December 31, 2026. Otherwise resolves NO.
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="p-4 bg-gray-50 rounded-xl">
+                          <div className="text-xs font-bold text-gray-500 mb-2 uppercase">Resolution Source</div>
+                          <div className="text-sm font-bold text-gray-900">Coinbase</div>
+                        </div>
+                        <div className="p-4 bg-gray-50 rounded-xl">
+                          <div className="text-xs font-bold text-gray-500 mb-2 uppercase">Resolution Date</div>
+                          <div className="text-sm font-bold text-gray-900">Dec 31, 2026</div>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="text-xs text-gray-500 mb-1">Resolution Date</div>
-                      <div className="text-sm font-semibold text-gray-900">Dec 31, 2026</div>
+                  )}
+
+                  {activeTab === 'Position' && (
+                    <div className="space-y-6">
+                      {!isConnected ? (
+                        <div className="text-center py-16">
+                          <div className="w-16 h-16 bg-gradient-to-br from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg className="w-8 h-8 text-[#14B8A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                            </svg>
+                          </div>
+                          <p className="text-gray-500 font-semibold">Connect wallet to view your positions</p>
+                        </div>
+                      ) : parseFloat(yesBalance) === 0 && parseFloat(noBalance) === 0 ? (
+                        <div className="text-center py-16">
+                          <div className="text-6xl mb-4">📊</div>
+                          <p className="text-gray-500 font-semibold">No positions yet</p>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {parseFloat(yesBalance) > 0 && (
+                            <motion.div 
+                              initial={{ scale: 0.9, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              className="p-6 bg-gradient-to-br from-green-50 to-green-100 rounded-2xl border-2 border-green-200 shadow-lg"
+                            >
+                              <div className="flex justify-between items-start mb-4">
+                                <div>
+                                  <div className="text-sm font-bold text-green-600 mb-2 uppercase tracking-wide">YES Position</div>
+                                  <div className="text-3xl font-black text-green-800">{parseFloat(yesBalance).toFixed(4)} shares</div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm text-gray-600 mb-1 font-semibold">Value</div>
+                                  <div className="text-2xl font-black text-gray-900">
+                                    ${(parseFloat(yesBalance) * priceYes).toFixed(2)}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mt-4 pt-4 border-t border-green-200 text-xs text-gray-600">
+                                <div className="flex justify-between">
+                                  <span className="font-semibold">Price per share:</span>
+                                  <span className="font-bold">${priceYes.toFixed(4)}</span>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                          {parseFloat(noBalance) > 0 && (
+                            <motion.div 
+                              initial={{ scale: 0.9, opacity: 0 }}
+                              animate={{ scale: 1, opacity: 1 }}
+                              transition={{ delay: 0.1 }}
+                              className="p-6 bg-gradient-to-br from-red-50 to-red-100 rounded-2xl border-2 border-red-200 shadow-lg"
+                            >
+                              <div className="flex justify-between items-start mb-4">
+                                <div>
+                                  <div className="text-sm font-bold text-red-600 mb-2 uppercase tracking-wide">NO Position</div>
+                                  <div className="text-3xl font-black text-red-800">{parseFloat(noBalance).toFixed(4)} shares</div>
+                                </div>
+                                <div className="text-right">
+                                  <div className="text-sm text-gray-600 mb-1 font-semibold">Value</div>
+                                  <div className="text-2xl font-black text-gray-900">
+                                    ${(parseFloat(noBalance) * priceNo).toFixed(2)}
+                                  </div>
+                                </div>
+                              </div>
+                              <div className="mt-4 pt-4 border-t border-red-200 text-xs text-gray-600">
+                                <div className="flex justify-between">
+                                  <span className="font-semibold">Price per share:</span>
+                                  <span className="font-bold">${priceNo.toFixed(4)}</span>
+                                </div>
+                              </div>
+                            </motion.div>
+                          )}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
-              )}
+                  )}
 
-              {activeTab === 'Position' && (
-                <div className="space-y-4">
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No positions yet</p>
-                  </div>
-                </div>
-              )}
+                  {activeTab === 'Orders' && (
+                    <div className="text-center py-16">
+                      <div className="text-6xl mb-4">📋</div>
+                      <p className="text-gray-500 font-semibold">No orders yet</p>
+                    </div>
+                  )}
 
-              {activeTab === 'Orders' && (
-                <div className="space-y-4">
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No orders yet</p>
-                  </div>
-                </div>
-              )}
-
-              {activeTab === 'Transactions' && (
-                <div className="space-y-4">
-                  <div className="text-center py-8 text-gray-500">
-                    <p>No transactions yet</p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* Comments Section */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Comments</h3>
-              <div className="flex gap-3 mb-6">
-                <input
-                  type="text"
-                  placeholder="Add a comment..."
-                  className="flex-1 px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                />
-                <button className="px-6 py-3 bg-[#14B8A6] text-white rounded-lg hover:bg-[#0D9488] transition-colors">
-                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14 5l7 7m0 0l-7 7m7-7H3" />
-                  </svg>
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div className="border-b border-gray-200 pb-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="font-semibold text-gray-900">crypto_analyst</span>
-                    <span className="text-xs text-gray-500">2 hours ago</span>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-2">Bitcoin looks bullish this quarter. Expecting 50% probability higher.</p>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <button className="flex items-center gap-1 hover:text-[#14B8A6]">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      45
-                    </button>
-                  </div>
-                </div>
-                <div className="border-b border-gray-200 pb-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="font-semibold text-gray-900">market_watcher</span>
-                    <span className="text-xs text-gray-500">4 hours ago</span>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-2">Strong resistance at 95k. This might take longer than expected.</p>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <button className="flex items-center gap-1 hover:text-[#14B8A6]">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      32
-                    </button>
-                  </div>
-                </div>
-                <div className="pb-4">
-                  <div className="flex items-start justify-between mb-2">
-                    <span className="font-semibold text-gray-900">defi_trader</span>
-                    <span className="text-xs text-gray-500">6 hours ago</span>
-                  </div>
-                  <p className="text-sm text-gray-700 mb-2">If Fed continues easing, we&apos;ll definitely see 100k.</p>
-                  <div className="flex items-center gap-4 text-xs text-gray-500">
-                    <button className="flex items-center gap-1 hover:text-[#14B8A6]">
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4.318 6.318a4.5 4.5 0 000 6.364L12 20.364l7.682-7.682a4.5 4.5 0 00-6.364-6.364L12 7.636l-1.318-1.318a4.5 4.5 0 00-6.364 0z" />
-                      </svg>
-                      28
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
+                  {activeTab === 'Transactions' && (
+                    <div className="space-y-3">
+                      {transactionsLoading ? (
+                        <div className="text-center py-16">
+                          <motion.div
+                            animate={{ rotate: 360 }}
+                            transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
+                            className="inline-block w-12 h-12 border-4 border-[#14B8A6] border-t-transparent rounded-full"
+                          />
+                          <p className="mt-4 text-gray-500 font-semibold">Loading transactions...</p>
+                        </div>
+                      ) : transactions.length === 0 ? (
+                        <div className="text-center py-16">
+                          <div className="text-6xl mb-4">📜</div>
+                          <p className="text-gray-500 font-semibold">No transactions yet</p>
+                        </div>
+                      ) : (
+                        transactions.map((tx, index) => (
+                          <motion.div
+                            key={tx.id}
+                            initial={{ x: -50, opacity: 0 }}
+                            animate={{ x: 0, opacity: 1 }}
+                            transition={{ delay: index * 0.05 }}
+                            className="flex items-center justify-between p-5 bg-gray-50 rounded-xl hover:bg-gray-100 transition-all border border-gray-200 hover:border-[#14B8A6]"
+                          >
+                            <div className="flex items-center gap-4 flex-1">
+                              <div className={`px-3 py-1.5 rounded-full text-xs font-bold uppercase shadow-md ${
+                                tx.type === 'BuyYes' || tx.type === 'BuyNo'
+                                  ? 'bg-gradient-to-r from-green-400 to-green-500 text-white'
+                                  : 'bg-gradient-to-r from-red-400 to-red-500 text-white'
+                              }`}>
+                                {tx.type}
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-gray-900">
+                                  {tx.user.slice(0, 6)}...{tx.user.slice(-4)}
+                                </div>
+                                <div className="text-xs text-gray-500">
+                                  {new Date(tx.timestamp * 1000).toLocaleString()}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right mr-4">
+                              <div className="text-sm font-bold text-gray-900">
+                                {tx.amount} → {tx.output}
+                              </div>
+                              <div className="text-xs text-gray-500">
+                                Price: ${tx.price}
+                              </div>
+                            </div>
+                            <a
+                              href={`https://testnet.bscscan.com/tx/${tx.txHash}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-[#14B8A6] hover:text-[#0D9488] font-bold text-sm flex items-center gap-1"
+                            >
+                              View
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" />
+                              </svg>
+                            </a>
+                          </motion.div>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </motion.div>
           </div>
 
           {/* Right Column - Trading Interface & Top Holders */}
-          <div className="space-y-6">
+          <div className="space-y-8">
             {/* Trading Card */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              {isConnected ? (
-                <TradingCard marketId={parseInt(marketId)} question={market.question as string} />
-              ) : (
-                <div className="space-y-6">
-                  {/* Buy/Sell Tabs */}
-                  <div className="flex gap-2 border-b border-gray-200">
-                    <button className="px-6 py-3 font-semibold text-sm text-[#14B8A6] border-b-2 border-[#14B8A6]">
-                      BUY
-                    </button>
-                    <button className="px-6 py-3 font-semibold text-sm text-gray-600 hover:text-gray-900 flex items-center gap-1">
-                      SELL
-                      <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                    </button>
-                  </div>
-
-                  {/* Price Boxes */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-green-50 rounded-lg p-4 border border-green-200">
-                      <div className="text-xs text-gray-600 mb-1">YES</div>
-                      <div className="text-2xl font-bold text-green-700">${priceYes.toFixed(3)}</div>
-                    </div>
-                    <div className="bg-red-50 rounded-lg p-4 border border-red-200">
-                      <div className="text-xs text-gray-600 mb-1">NO</div>
-                      <div className="text-2xl font-bold text-red-700">${priceNo.toFixed(3)}</div>
-                    </div>
-                  </div>
-
-                  {/* Amount Input */}
-                  <div>
-                    <label className="text-sm font-medium text-gray-700 mb-2 block">Amount</label>
-                    <div className="flex items-center gap-2">
-                      <button className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg">-</button>
-                      <input
-                        type="number"
-                        placeholder="0.0"
-                        className="flex-1 px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
-                      />
-                      <button className="px-3 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg">+</button>
-                    </div>
-                  </div>
-
-                  {/* Balance */}
-                  <div className="text-sm text-gray-600">
-                    Balance 0 Shares
-                  </div>
-
-                  {/* Quick Share Buttons */}
-                  <div className="flex gap-2">
-                    {[10, 50, 100, 'Max'].map((val) => (
-                      <button
-                        key={val}
-                        className="flex-1 px-4 py-2 bg-gray-100 hover:bg-gray-200 rounded-lg text-sm font-medium text-gray-700"
-                      >
-                        {val}
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Set Expiration Toggle */}
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm text-gray-700">Set Expiration</span>
-                    <button className="w-12 h-6 bg-gray-200 rounded-full relative">
-                      <div className="w-5 h-5 bg-white rounded-full absolute top-0.5 left-0.5 transition-transform"></div>
-                    </button>
-                  </div>
-
-                  {/* Total */}
-                  <div className="flex justify-between items-center pt-4 border-t border-gray-200">
-                    <span className="text-sm font-medium text-gray-700">Total</span>
-                    <span className="text-lg font-bold text-gray-900">$0.00</span>
-                  </div>
-
-                  {/* Connect Wallet Button */}
-                  <button className="w-full py-4 bg-[#14B8A6] text-white rounded-lg font-semibold hover:bg-[#0D9488] transition-colors">
-                    Connect Wallet
-                  </button>
-
-                  <p className="text-xs text-center text-gray-500">
-                    By trading, you agree to the Privacy and Terms.
-                  </p>
-                </div>
-              )}
-            </div>
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.3 }}
+              className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100 sticky top-8"
+            >
+              <TradingCard marketId={parseInt(marketId)} question={market.question as string} />
+            </motion.div>
 
             {/* Top Holders */}
-            <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
-              <h3 className="text-lg font-semibold text-gray-900 mb-4">Top Holders</h3>
-              <div className="flex gap-2 mb-4">
-                <button
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ duration: 0.6, delay: 0.5 }}
+              className="bg-white rounded-2xl p-6 shadow-xl border border-gray-100"
+            >
+              <h3 className="text-xl font-black text-gray-900 mb-6">Top Holders</h3>
+              <div className="flex gap-2 mb-6">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setHolderTab('yes')}
-                  className={`flex-1 px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
+                  className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-md ${
                     holderTab === 'yes'
-                      ? 'bg-green-600 text-white'
+                      ? 'bg-gradient-to-r from-green-400 to-green-500 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   YES
-                </button>
-                <button
+                </motion.button>
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
                   onClick={() => setHolderTab('no')}
-                  className={`flex-1 px-4 py-2 rounded-lg font-semibold text-sm transition-colors ${
+                  className={`flex-1 px-4 py-3 rounded-xl font-bold text-sm transition-all shadow-md ${
                     holderTab === 'no'
-                      ? 'bg-red-600 text-white'
+                      ? 'bg-gradient-to-r from-red-400 to-red-500 text-white'
                       : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
                   }`}
                 >
                   NO
-                </button>
+                </motion.button>
               </div>
               <div className="space-y-3">
-                {/* Placeholder holders - would need to query from contract events */}
                 {holderTab === 'yes' ? (
-                  <>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm font-medium text-gray-900">jax</span>
-                      <span className="text-sm text-gray-600">$2.00</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm font-medium text-gray-900">zin888</span>
-                      <span className="text-sm text-gray-600">$1.20</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm font-medium text-gray-900">10xlong.btc</span>
-                      <span className="text-sm text-gray-600">$1.11</span>
-                    </div>
-                  </>
+                  topHoldersYes.length > 0 ? (
+                    topHoldersYes.map((holder, idx) => (
+                      <motion.div 
+                        key={idx}
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <span className="text-sm font-bold text-gray-900 truncate mr-2">
+                          {holder.address.slice(0, 6)}...{holder.address.slice(-4)}
+                        </span>
+                        <span className="text-sm font-bold text-[#14B8A6]">${holder.balanceUsd.toFixed(2)}</span>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-sm text-gray-500 font-semibold">No holders yet</div>
+                  )
                 ) : (
-                  <>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm font-medium text-gray-900">bear_market</span>
-                      <span className="text-sm text-gray-600">$1.50</span>
-                    </div>
-                    <div className="flex justify-between items-center py-2">
-                      <span className="text-sm font-medium text-gray-900">skeptic_crypto</span>
-                      <span className="text-sm text-gray-600">$0.90</span>
-                    </div>
-                  </>
+                  topHoldersNo.length > 0 ? (
+                    topHoldersNo.map((holder, idx) => (
+                      <motion.div 
+                        key={idx}
+                        initial={{ x: -20, opacity: 0 }}
+                        animate={{ x: 0, opacity: 1 }}
+                        transition={{ delay: idx * 0.05 }}
+                        className="flex justify-between items-center py-3 px-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                      >
+                        <span className="text-sm font-bold text-gray-900 truncate mr-2">
+                          {holder.address.slice(0, 6)}...{holder.address.slice(-4)}
+                        </span>
+                        <span className="text-sm font-bold text-[#14B8A6]">${holder.balanceUsd.toFixed(2)}</span>
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="text-center py-8 text-sm text-gray-500 font-semibold">No holders yet</div>
+                  )
                 )}
-                <div className="text-center py-4 text-sm text-gray-500">
-                  {address && holderTab === 'yes' && parseFloat(yesBalance) > 0 && (
-                    <div className="flex justify-between items-center py-2 border-t border-gray-200 mt-2 pt-2">
-                      <span className="text-sm font-medium text-gray-900">You</span>
-                      <span className="text-sm text-gray-600">${(parseFloat(yesBalance) * priceYes).toFixed(2)}</span>
-                    </div>
-                  )}
-                  {address && holderTab === 'no' && parseFloat(noBalance) > 0 && (
-                    <div className="flex justify-between items-center py-2 border-t border-gray-200 mt-2 pt-2">
-                      <span className="text-sm font-medium text-gray-900">You</span>
-                      <span className="text-sm text-gray-600">${(parseFloat(noBalance) * priceNo).toFixed(2)}</span>
-                    </div>
-                  )}
-                </div>
+                {address && holderTab === 'yes' && parseFloat(yesBalance) > 0 && (
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex justify-between items-center py-3 px-4 bg-gradient-to-r from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-lg border-2 border-[#14B8A6]/20 mt-4"
+                  >
+                    <span className="text-sm font-bold text-gray-900">You</span>
+                    <span className="text-sm font-bold text-[#14B8A6]">${(parseFloat(yesBalance) * priceYes).toFixed(2)}</span>
+                  </motion.div>
+                )}
+                {address && holderTab === 'no' && parseFloat(noBalance) > 0 && (
+                  <motion.div 
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="flex justify-between items-center py-3 px-4 bg-gradient-to-r from-[#14B8A6]/10 to-[#14B8A6]/5 rounded-lg border-2 border-[#14B8A6]/20 mt-4"
+                  >
+                    <span className="text-sm font-bold text-gray-900">You</span>
+                    <span className="text-sm font-bold text-[#14B8A6]">${(parseFloat(noBalance) * priceNo).toFixed(2)}</span>
+                  </motion.div>
+                )}
               </div>
-            </div>
+            </motion.div>
           </div>
         </div>
       </div>

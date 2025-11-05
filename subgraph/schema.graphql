@@ -1,0 +1,101 @@
+type Market @entity(immutable: false) {
+  id: ID!                    # Market ID (uint256)
+  marketId: BigInt!          # Market ID number
+  coreAddress: Bytes!         # SpeculateCore contract address
+  yesToken: Bytes!            # YES PositionToken address
+  noToken: Bytes!             # NO PositionToken address
+  question: String!           # Market question
+  createdAt: BigInt!          # Block timestamp when market was created
+  creator: Bytes!             # Market creator address
+  
+  # Market state
+  reserveYes: BigInt!          # YES reserve (18 decimals)
+  reserveNo: BigInt!           # NO reserve (18 decimals)
+  usdcVault: BigInt!           # USDC vault (6 decimals)
+  totalPairsUSDC: BigInt!      # Total pairs USDC (6 decimals)
+  
+  # Fee structure
+  feeTreasuryBps: Int!         # Treasury fee basis points
+  feeVaultBps: Int!            # Vault fee basis points
+  feeLpBps: Int!               # LP fee basis points
+  maxTradeBps: Int!            # Max trade size basis points
+  
+  # Status
+  status: Int!                 # 0=Active, 1=Paused, 2=Resolved
+  sellFees: Boolean!          # Whether sell fees are enabled
+  lp: Bytes!                   # Liquidity provider address
+  
+  # Derived data
+  trades: [Trade!]! @derivedFrom(field: "market")
+  holders: [Holder!]! @derivedFrom(field: "market")
+  candles: [Candle!]! @derivedFrom(field: "market")
+}
+
+type Trade @entity(immutable: true) {
+  id: ID!                     # txHash-logIndex
+  market: Market!
+  marketId: BigInt!           # Market ID for easy filtering
+  user: Bytes!                # Trader address
+  type: String!                # "BuyYes" | "BuyNo" | "SellYes" | "SellNo"
+  sideYes: Boolean!           # true for YES, false for NO
+  isBuy: Boolean!             # true for buy, false for sell
+  
+  # Trade amounts
+  usdcAmount: BigInt!          # USDC in/out (6 decimals)
+  tokenAmount: BigInt!         # Tokens in/out (18 decimals)
+  priceE6: BigInt!             # Price at time of trade (E6)
+  
+  # Fees
+  feeTreasury: BigInt!
+  feeVault: BigInt!
+  feeLp: BigInt!
+  
+  # Metadata
+  timestamp: BigInt!           # Block timestamp
+  blockNumber: BigInt!         # Block number
+  txHash: Bytes!               # Transaction hash
+  logIndex: BigInt!            # Log index
+}
+
+type Holder @entity(immutable: false) {
+  id: ID!                     # marketId-user-side (e.g., "1-0x123-yes")
+  market: Market!
+  marketId: BigInt!           # Market ID
+  user: Bytes!                # Holder address
+  sideYes: Boolean!           # true for YES, false for NO
+  tokenAddress: Bytes!        # PositionToken address
+  
+  # Holdings
+  balance: BigInt!             # Current token balance (18 decimals)
+  totalBought: BigInt!         # Total tokens ever bought (18 decimals)
+  totalSold: BigInt!          # Total tokens ever sold (18 decimals)
+  totalSpent: BigInt!          # Total USDC spent (6 decimals)
+  totalReceived: BigInt!       # Total USDC received (6 decimals)
+  
+  # Last update
+  lastUpdated: BigInt!         # Block timestamp of last update
+}
+
+type Candle @entity(immutable: false) {
+  id: ID!                     # marketId-timeframe-startTimestamp
+  market: Market!
+  marketId: BigInt!
+  timeframe: String!          # "5m" | "1h" | "1d"
+  startTimestamp: BigInt!
+  
+  # YES prices (E6)
+  openYES: BigInt!
+  highYES: BigInt!
+  lowYES: BigInt!
+  closeYES: BigInt!
+  
+  # NO prices (E6)
+  openNO: BigInt!
+  highNO: BigInt!
+  lowNO: BigInt!
+  closeNO: BigInt!
+  
+  # Volume
+  volume: BigInt!              # Total USDC volume (6 decimals)
+  trades: BigInt!              # Number of trades
+}

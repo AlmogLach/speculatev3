@@ -2,99 +2,73 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import Header from '@/components/Header';
+import { motion } from 'framer-motion';
 import { getMarketCount, getMarket, getPriceYes, getPriceNo } from '@/lib/hooks';
+import { useReadContract } from 'wagmi';
+import { addresses } from '@/lib/contracts';
+import { usdcAbi } from '@/lib/abis';
 import { formatUnits } from 'viem';
 
-interface MarketCard {
+interface Market {
   id: number;
-  asset: string;
   question: string;
-  yesPrice: string;
-  noPrice: string;
-  volume: string;
-  yesPercent: number;
-  noPercent: number;
-  status: 'LIVE TRADING' | 'FUNDING' | 'RESOLVED';
-  liquidity: string;
+  priceYes: string;
+  priceNo: string;
+  volume: number;
 }
 
 export default function Home() {
-  const [marketCount, setMarketCount] = useState<number | null>(null);
-  const [markets, setMarkets] = useState<MarketCard[]>([]);
+  const [marketCount, setMarketCount] = useState<number>(0);
+  const [traders, setTraders] = useState<number>(3800);
+  const [liveMarkets, setLiveMarkets] = useState<Market[]>([]);
   const [loading, setLoading] = useState(true);
-  const [totalVolume, setTotalVolume] = useState<number>(0);
-  const [liveMarkets, setLiveMarkets] = useState<number>(0);
+
+  const { data: coreUsdcBalance } = useReadContract({
+    address: addresses.usdc,
+    abi: usdcAbi,
+    functionName: 'balanceOf',
+    args: [addresses.core],
+  });
 
   useEffect(() => {
     loadData();
+    // Animate traders count
+    const interval = setInterval(() => {
+      setTraders(prev => prev + Math.floor(Math.random() * 3));
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const loadData = async () => {
     try {
       const count = await getMarketCount();
-      setMarketCount(Number(count));
+      const countNum = Number(count);
+      setMarketCount(countNum);
+
+      // Load first 3 markets for preview
+      const markets: Market[] = [];
+      const limit = Math.min(countNum, 3);
       
-      // Load ALL markets from the contract (no mockups)
-      const marketArray: MarketCard[] = [];
-      
-      for (let i = 1; i <= Number(count); i++) {
+      for (let i = 1; i <= limit; i++) {
         try {
-          const market = await getMarket(BigInt(i));
-          if (!market.exists) continue;
+          const market: any = await getMarket(BigInt(i));
+          const priceYes = await getPriceYes(BigInt(i));
+          const priceNo = await getPriceNo(BigInt(i));
+          const volume = Number(formatUnits((market.totalPairs as bigint) || 0n, 6));
           
-          const priceYes = parseFloat(await getPriceYes(BigInt(i)));
-          const priceNo = parseFloat(await getPriceNo(BigInt(i)));
-          
-          const totalPairs = Number(formatUnits(market.totalPairsUSDC as bigint, 6));
-          const statusNum = Number(market.status);
-          const status = statusNum === 0 ? 'LIVE TRADING' : statusNum === 1 ? 'FUNDING' : 'RESOLVED';
-          
-          // Extract asset name from question (simple heuristic)
-          const assetName = market.question?.split(' ')[0]?.toUpperCase() || 'MARKET';
-          
-          // Calculate percentages based on reserves
-          const reserveYes = Number(formatUnits(market.reserveYes as bigint, 18));
-          const reserveNo = Number(formatUnits(market.reserveNo as bigint, 18));
-          const totalReserve = reserveYes + reserveNo;
-          
-          let yesPercent = 50;
-          let noPercent = 50;
-          if (totalReserve > 0) {
-            yesPercent = Math.round((reserveYes / totalReserve) * 100);
-            noPercent = Math.round((reserveNo / totalReserve) * 100);
-          }
-          
-          marketArray.push({
+          markets.push({
             id: i,
-            asset: assetName,
             question: market.question as string,
-            yesPrice: priceYes.toFixed(3),
-            noPrice: priceNo.toFixed(3),
-            volume: totalPairs > 0 ? `$${totalPairs.toLocaleString()}` : '$0',
-            yesPercent,
-            noPercent,
-            status,
-            liquidity: totalPairs > 0 ? `${(totalPairs / 1000).toFixed(1)}K` : '0',
+            priceYes: priceYes || '0.5',
+            priceNo: priceNo || '0.5',
+            volume,
           });
-        } catch (error) {
-          console.error(`Error loading market ${i}:`, error);
+        } catch (err) {
+          console.error(`Error loading market ${i}:`, err);
         }
       }
       
-      // Calculate real statistics from marketArray
-      const totalVol = marketArray.reduce((sum, m) => {
-        const volStr = m.volume.replace('$', '').replace(/,/g, '');
-        return sum + (parseFloat(volStr) || 0);
-      }, 0);
-      
-      const liveCount = marketArray.filter(m => m.status === 'LIVE TRADING').length;
-      
-      setTotalVolume(totalVol);
-      setLiveMarkets(liveCount);
-      
-      // Only show markets that exist (no placeholders)
-      setMarkets(marketArray);
+      setLiveMarkets(markets);
     } catch (error) {
       console.error('Error loading data:', error);
     } finally {
@@ -102,365 +76,568 @@ export default function Home() {
     }
   };
 
+  const totalVolume = coreUsdcBalance && typeof coreUsdcBalance === 'bigint' 
+    ? parseFloat(formatUnits(coreUsdcBalance, 6)) 
+    : 0;
+
+  const formatVolume = (vol: number) => {
+    if (vol >= 1000000) return `$${(vol / 1000000).toFixed(1)}M`;
+    if (vol >= 1000) return `$${(vol / 1000).toFixed(1)}K`;
+    return `$${vol.toFixed(0)}`;
+  };
+
+  const formatNumber = (num: number) => {
+    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
+    return num.toString();
+  };
+
   return (
-    <div className="min-h-screen bg-[#FAF9FF]">
-      <Header />
+    <div className="min-h-screen bg-[#F5F0FF] relative overflow-hidden">
+      {/* Animated Background */}
+      <div className="absolute inset-0 overflow-hidden pointer-events-none">
+        {/* Animated gradient blobs */}
+        <motion.div 
+          className="absolute top-0 left-0 w-[600px] h-[600px] bg-gradient-to-br from-[#14B8A6] to-[#0D9488] rounded-full mix-blend-multiply filter blur-3xl opacity-20"
+          animate={{
+            x: [0, 100, 0],
+            y: [0, 50, 0],
+            scale: [1, 1.1, 1],
+          }}
+          transition={{
+            duration: 20,
+            repeat: Infinity,
+            ease: "easeInOut"
+          }}
+        />
+        <motion.div 
+          className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-purple-400 to-pink-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
+          animate={{
+            x: [0, -50, 0],
+            y: [0, 100, 0],
+            scale: [1, 1.2, 1],
+          }}
+          transition={{
+            duration: 25,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 2
+          }}
+        />
+        <motion.div 
+          className="absolute bottom-0 left-1/2 w-[550px] h-[550px] bg-gradient-to-br from-blue-400 to-cyan-400 rounded-full mix-blend-multiply filter blur-3xl opacity-20"
+          animate={{
+            x: [0, -100, 0],
+            y: [0, -50, 0],
+            scale: [1, 1.15, 1],
+          }}
+          transition={{
+            duration: 22,
+            repeat: Infinity,
+            ease: "easeInOut",
+            delay: 4
+          }}
+        />
+        
+        {/* Grid Pattern */}
+        <div className="absolute inset-0 opacity-[0.08]" style={{
+          backgroundImage: 'radial-gradient(circle, #14B8A6 1.5px, transparent 1.5px)',
+          backgroundSize: '40px 40px'
+        }}></div>
+      </div>
 
-      {/* Hero Section */}
-      <section className="relative overflow-hidden bg-[#FAF9FF] pt-20 pb-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
-            {/* Left Side - Content */}
-            <div>
-              <div className="inline-flex items-center rounded-full bg-[#14B8A6] px-4 py-1.5 text-xs font-semibold text-white mb-6">
-                BETA LIVE
-              </div>
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-gray-900 leading-tight mb-6">
-                Profit from the{' '}
-                <span className="block">Curve Wars</span>
-              </h1>
-              <p className="text-lg text-gray-600 mb-8 leading-relaxed max-w-xl">
-                Trade on crypto market predictions with instant liquidity and zero slippage. Bet YES or NO on real-world outcomes with verifiable oracle data.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-4 mb-6">
-                <Link
-                  href="/markets"
-                  className="inline-flex items-center justify-center rounded-lg bg-[#14B8A6] px-8 py-4 text-base font-semibold text-white hover:bg-[#0D9488] transition-colors shadow-lg"
-                >
-                  Launch App
-                  <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                  </svg>
-                </Link>
-                <Link
-                  href="#features"
-                  className="inline-flex items-center justify-center rounded-lg border-2 border-gray-300 px-8 py-4 text-base font-semibold text-gray-700 hover:border-gray-400 transition-colors bg-white"
-                >
-                  Learn More
-                </Link>
-              </div>
-              <div className="flex items-center gap-4 text-sm text-gray-500">
-                <span>0.5% trading fee</span>
-                <span>•</span>
-                <span>Instant settlement</span>
-                <span>•</span>
-                <span>Oracle verified</span>
-              </div>
+      {/* Radial glow behind hero */}
+      <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[800px] h-[400px] bg-gradient-radial from-[#14B8A6]/20 to-transparent blur-3xl pointer-events-none"></div>
+
+      {/* Header */}
+      <motion.header 
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        transition={{ duration: 0.5 }}
+        className="relative z-10 border-b border-white/20 backdrop-blur-md bg-white/40"
+      >
+        <nav className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="flex h-20 items-center justify-between">
+            <div className="flex items-center gap-3">
+              <motion.div 
+                whileHover={{ rotate: 360, scale: 1.1 }}
+                transition={{ duration: 0.5 }}
+                className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#14B8A6] to-[#0D9488] flex items-center justify-center shadow-lg"
+              >
+                <svg className="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                </svg>
+              </motion.div>
+              <span className="text-2xl font-bold text-gray-900">SpeculateX</span>
             </div>
-
-            {/* Right Side - Stats Cards */}
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center justify-center opacity-10">
-                <div className="w-64 h-96 bg-[#14B8A6] rounded-3xl transform rotate-12"></div>
-              </div>
-              <div className="relative grid grid-cols-2 gap-4">
-                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                  <div className="text-xs text-gray-500 mb-1">ACTIVE MARKETS</div>
-                  <div className="text-3xl font-bold text-[#14B8A6] mb-1">
-                    {marketCount !== null ? marketCount : '24'}
-                  </div>
-                  <div className="text-xs text-gray-500">Live trading</div>
-                  <div className="absolute top-4 right-4 text-gray-300">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                  <div className="text-xs text-gray-500 mb-1">TOTAL VOLUME</div>
-                  <div className="text-3xl font-bold text-[#14B8A6] mb-1">
-                    {totalVolume >= 1000000 
-                      ? `$${(totalVolume / 1000000).toFixed(2)}M`
-                      : totalVolume >= 1000
-                      ? `$${(totalVolume / 1000).toFixed(2)}K`
-                      : `$${totalVolume.toFixed(2)}`}
-                  </div>
-                  <div className="text-xs text-gray-500">All time</div>
-                  <div className="absolute top-4 right-4 text-gray-300">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M8 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0zM15 16.5a1.5 1.5 0 11-3 0 1.5 1.5 0 013 0z" />
-                      <path d="M3 4a1 1 0 00-1 1v10a1 1 0 001 1h1.05a2.5 2.5 0 014.9 0H10a1 1 0 001-1V5a1 1 0 00-1-1H3zM14 7a1 1 0 00-1 1v6.05A2.5 2.5 0 0115.95 16H17a1 1 0 001-1v-5a1 1 0 00-.293-.707l-2-2A1 1 0 0015 7h-1z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                  <div className="text-xs text-gray-500 mb-1">LIVE MARKETS</div>
-                  <div className="text-3xl font-bold text-[#14B8A6] mb-1">{liveMarkets}</div>
-                  <div className="text-xs text-gray-500">Active now</div>
-                  <div className="absolute top-4 right-4 text-gray-300">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M9 6a3 3 0 11-6 0 3 3 0 016 0zM17 6a3 3 0 11-6 0 3 3 0 016 0zM12.93 17c.046-.327.07-.66.07-1a6.97 6.97 0 00-1.5-4.33A5 5 0 0119 16v1h-6.07zM6 11a5 5 0 015 5v1H1v-1a5 5 0 015-5z" />
-                    </svg>
-                  </div>
-                </div>
-                <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-100">
-                  <div className="text-xs text-gray-500 mb-1">24H VOLUME</div>
-                  <div className="text-3xl font-bold text-[#14B8A6] mb-1">
-                    {totalVolume >= 1000000 
-                      ? `$${(totalVolume / 1000000).toFixed(2)}M`
-                      : totalVolume >= 1000
-                      ? `$${(totalVolume / 1000).toFixed(2)}K`
-                      : `$${totalVolume.toFixed(2)}`}
-                  </div>
-                  <div className="text-xs text-gray-500">Current period</div>
-                  <div className="absolute top-4 right-4 text-gray-300">
-                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
-                      <path d="M2 11a1 1 0 011-1h2a1 1 0 011 1v5a1 1 0 01-1 1H3a1 1 0 01-1-1v-5zM8 7a1 1 0 011-1h2a1 1 0 011 1v9a1 1 0 01-1 1H9a1 1 0 01-1-1V7zM14 4a1 1 0 011-1h2a1 1 0 011 1v12a1 1 0 01-1 1h-2a1 1 0 01-1-1V4z" />
-                    </svg>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Markets Section */}
-      <section id="markets" className="py-20 bg-[#FAF9FF]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <div className="text-sm text-gray-500 uppercase tracking-wide mb-2">MARKETS</div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Discover Active Predictions
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Trade on crypto market predictions with instant liquidity. Real-time data from oracle feeds ensures accurate market resolution.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {markets.map((market) => (
-              <div key={market.id} className="bg-white rounded-xl p-6 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                <div className="flex items-start justify-between mb-4">
-                  <div className="text-sm font-bold text-gray-900">{market.asset}</div>
-                  <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
-                    market.status === 'LIVE TRADING' 
-                      ? 'bg-[#14B8A6] text-white' 
-                      : 'bg-green-100 text-green-700'
-                  }`}>
-                    {market.status}
-                  </span>
-                </div>
-                <h3 className="text-base font-semibold text-gray-900 mb-4">{market.question}</h3>
-                
-                <div className="grid grid-cols-2 gap-3 mb-4">
-                  <div className="bg-gray-50 rounded-lg p-3 border border-gray-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600">YES</span>
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
-                      </svg>
-                    </div>
-                    <div className="text-lg font-bold text-gray-900 mt-1">${market.yesPrice}</div>
-                  </div>
-                  <div className="bg-red-50 rounded-lg p-3 border border-red-200">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-600">NO</span>
-                      <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </div>
-                    <div className="text-lg font-bold text-gray-900 mt-1">${market.noPrice}</div>
-                  </div>
-                </div>
-
-                <div className="mb-4">
-                  <div className="flex items-center justify-between text-xs text-gray-600 mb-2">
-                    <span>Volume</span>
-                    <span>{market.volume}</span>
-                  </div>
-                  <div className="w-full bg-gray-200 rounded-full h-2 overflow-hidden">
-                    <div className="flex h-full">
-                      <div 
-                        className="bg-[#14B8A6]" 
-                        style={{ width: `${market.yesPercent}%` }}
-                      ></div>
-                      <div 
-                        className="bg-red-300" 
-                        style={{ width: `${market.noPercent}%` }}
-                      ></div>
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-between text-xs text-gray-500 mt-1">
-                    <span>YES {market.yesPercent}%</span>
-                    <span>NO {market.noPercent}%</span>
-                  </div>
-                </div>
-
-                <div className="flex items-center gap-2 text-xs text-gray-500 mb-4">
-                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                  </svg>
-                  <span>{market.liquidity} USDC CAP</span>
-                </div>
-
-                <Link
-                  href={`/markets/${market.id}`}
-                  className="w-full rounded-lg bg-[#14B8A6] px-4 py-3 text-sm font-semibold text-white text-center hover:bg-[#0D9488] transition-colors block"
-                >
-                  Trade Market
-                </Link>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Features Section */}
-      <section id="features" className="py-20 bg-[#FAF9FF]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-12">
-            <div className="text-sm text-gray-500 uppercase tracking-wide mb-2">FEATURES</div>
-            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
-              Why Trade on SpeculateX
-            </h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-              Built for the decentralized web with security, speed and transparency at its core.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {[
-              {
-                icon: (
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                ),
-                title: 'Instant Liquidity',
-                description: 'Trade instantly with continuous liquidity pools. No waiting for matching orders or market makers.',
-              },
-              {
-                icon: (
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
-                  </svg>
-                ),
-                title: 'Secure Smart Contracts',
-                description: 'Audited and battle-tested contracts ensure your funds are safe. Built on proven DeFi protocols.',
-              },
-              {
-                icon: (
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
-                  </svg>
-                ),
-                title: 'Real-Time Data',
-                description: 'Oracle-powered markets with real-time price feeds. Accurate resolution based on verified on-chain data.',
-              },
-              {
-                icon: (
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
-                  </svg>
-                ),
-                title: '0.5% Trading Fee',
-                description: 'Low fees ensure more value for traders. Competitive rates with transparent fee structure.',
-              },
-              {
-                icon: (
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
-                  </svg>
-                ),
-                title: 'Community-Driven',
-                description: 'Anyone can create markets. Community proposals and governance shape the platform\'s future.',
-              },
-              {
-                icon: (
-                  <svg className="w-12 h-12" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" />
-                  </svg>
-                ),
-                title: 'Best Odds',
-                description: 'Fair pricing through AMM mechanics. No manipulation, just pure market dynamics.',
-              },
-            ].map((feature, index) => (
-              <div key={index} className="bg-white rounded-xl p-8 shadow-lg border border-gray-100 hover:shadow-xl transition-shadow">
-                <div className="text-[#14B8A6] mb-4">{feature.icon}</div>
-                <h3 className="text-xl font-bold text-gray-900 mb-3">{feature.title}</h3>
-                <p className="text-gray-600 leading-relaxed">{feature.description}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* CTA Section */}
-      <section className="py-20 bg-gradient-to-br from-[#14B8A6] to-[#0D9488] relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 left-0 w-64 h-64 bg-white rounded-full -translate-x-1/2 -translate-y-1/2"></div>
-          <div className="absolute bottom-0 right-0 w-96 h-96 bg-white rounded-full translate-x-1/2 translate-y-1/2"></div>
-        </div>
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="text-center">
-            <h2 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Ready to Start Trading?
-            </h2>
-            <p className="text-xl text-white/90 mb-8 max-w-2xl mx-auto">
-              Connect your wallet and start predicting market outcomes. Secure, transparent, and instant settlement.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
               <Link
                 href="/markets"
-                className="inline-flex items-center justify-center rounded-lg bg-white px-8 py-4 text-base font-semibold text-[#14B8A6] hover:bg-gray-50 transition-colors shadow-lg"
+                className="rounded-full bg-[#14B8A6] px-6 py-2.5 text-sm font-semibold text-white hover:bg-[#0D9488] transition-all shadow-lg hover:shadow-xl"
               >
                 Launch App
               </Link>
-              <Link
-                href="#"
-                className="inline-flex items-center justify-center rounded-lg border-2 border-white px-8 py-4 text-base font-semibold text-white hover:bg-white/10 transition-colors"
+            </motion.div>
+          </div>
+        </nav>
+      </motion.header>
+
+      {/* Hero Section */}
+      <main className="relative z-10">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pt-20 pb-16">
+          <div className="text-center max-w-4xl mx-auto">
+            {/* Beta Badge with shimmer */}
+            <motion.div 
+              initial={{ scale: 0, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ delay: 0.2, type: "spring" }}
+              className="mb-8 inline-flex"
+            >
+              <div className="relative inline-flex items-center h-10 px-5 rounded-full border-2 border-[#14B8A6]/30 bg-white/80 backdrop-blur-sm shadow-lg overflow-hidden">
+                <motion.div
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/50 to-transparent"
+                  animate={{ x: [-200, 200] }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                />
+                <motion.div 
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 2, repeat: Infinity }}
+                  className="w-2.5 h-2.5 rounded-full bg-[#14B8A6] mr-3"
+                />
+                <span className="relative z-10 text-sm font-bold text-[#14B8A6] uppercase tracking-wider">Beta Live</span>
+              </div>
+            </motion.div>
+
+            {/* Main Heading with gradient */}
+            <motion.h1 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.3, duration: 0.8 }}
+              className="text-6xl sm:text-7xl md:text-8xl font-black leading-[1] mb-8 tracking-tight"
+            >
+              <span className="text-gray-900">Profit from the</span>
+              <span className="block mt-3 bg-gradient-to-r from-[#14B8A6] via-[#0D9488] to-[#14B8A6] bg-clip-text text-transparent animate-gradient">
+                Curve Wars
+              </span>
+            </motion.h1>
+
+            {/* Description */}
+            <motion.p 
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.5, duration: 0.8 }}
+              className="text-xl sm:text-2xl text-gray-600 mb-12 max-w-3xl mx-auto leading-relaxed"
+            >
+              Trade on crypto market predictions with instant liquidity and zero slippage. 
+              <span className="block mt-2">Bet YES or NO on real-world outcomes.</span>
+            </motion.p>
+
+            {/* CTA Buttons */}
+            <motion.div 
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.7, duration: 0.8 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center mb-16"
+            >
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link
+                  href="/markets"
+                  className="group relative inline-flex items-center justify-center h-16 px-10 rounded-full bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-lg font-bold text-white shadow-xl overflow-hidden"
+                >
+                  <motion.div
+                    className="absolute inset-0 bg-gradient-to-r from-[#0D9488] to-[#14B8A6]"
+                    initial={{ x: '100%' }}
+                    whileHover={{ x: 0 }}
+                    transition={{ duration: 0.3 }}
+                  />
+                  <span className="relative z-10 flex items-center">
+                    Launch Dapp
+                    <svg className="ml-3 w-6 h-6 group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                    </svg>
+                  </span>
+                  {/* Glow effect */}
+                  <div className="absolute inset-0 blur-xl bg-[#14B8A6]/50 group-hover:bg-[#14B8A6]/70 transition-all -z-10"></div>
+                </Link>
+              </motion.div>
+              
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link
+                  href="/markets"
+                  className="inline-flex items-center justify-center h-16 px-10 rounded-full border-2 border-gray-300 bg-white/80 backdrop-blur-sm text-lg font-bold text-gray-900 hover:border-[#14B8A6] hover:bg-white transition-all shadow-lg hover:shadow-xl"
+                >
+                  Explore Markets
+                </Link>
+              </motion.div>
+            </motion.div>
+
+            {/* Stats Grid with animated counters */}
+            <motion.div 
+              initial={{ y: 50, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 0.9, duration: 0.8 }}
+              className="grid grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto mb-16"
+            >
+              {/* Active Markets */}
+              <motion.div 
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl overflow-hidden"
               >
-                Read Documentation
-              </Link>
-            </div>
+                <div className="absolute inset-0 bg-gradient-to-br from-[#14B8A6]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Active Markets</div>
+                    <motion.div 
+                      whileHover={{ rotate: 360 }}
+                      transition={{ duration: 0.5 }}
+                      className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center group-hover:bg-[#14B8A6]/20 transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M3 13.125C3 12.504 3.504 12 4.125 12h2.25c.621 0 1.125.504 1.125 1.125v6.75C7.5 20.496 6.996 21 6.375 21h-2.25A1.125 1.125 0 013 19.875v-6.75zM9.75 8.625c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125v11.25c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V8.625zM16.5 4.125c0-.621.504-1.125 1.125-1.125h2.25C20.496 3 21 3.504 21 4.125v15.75c0 .621-.504 1.125-1.125 1.125h-2.25a1.125 1.125 0 01-1.125-1.125V4.125z" />
+                      </svg>
+                    </motion.div>
+                  </div>
+                  <motion.div 
+                    key={marketCount}
+                    initial={{ scale: 1.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="text-4xl font-black text-[#14B8A6] mb-1"
+                  >
+                    {marketCount || '24'}
+                  </motion.div>
+                  <div className="text-sm text-gray-500">Live trading</div>
+                </div>
+              </motion.div>
+
+              {/* Total Volume */}
+              <motion.div 
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-[#14B8A6]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Total Volume</div>
+                    <motion.div 
+                      whileHover={{ rotate: 360 }}
+                      transition={{ duration: 0.5 }}
+                      className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center group-hover:bg-[#14B8A6]/20 transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 18L9 11.25l4.306 4.307a11.95 11.95 0 015.814-5.519l2.74-1.22m0 0l-5.94-2.28m5.94 2.28l-2.28 5.941" />
+                      </svg>
+                    </motion.div>
+                  </div>
+                  <div className="text-4xl font-black text-[#14B8A6] mb-1">
+                    {formatVolume(totalVolume) || '$8.2M'}
+                  </div>
+                  <div className="text-sm text-gray-500">All time</div>
+                </div>
+              </motion.div>
+
+              {/* Traders Active */}
+              <motion.div 
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-[#14B8A6]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Traders</div>
+                    <motion.div 
+                      whileHover={{ rotate: 360 }}
+                      transition={{ duration: 0.5 }}
+                      className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center group-hover:bg-[#14B8A6]/20 transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z" />
+                      </svg>
+                    </motion.div>
+                  </div>
+                  <motion.div 
+                    key={traders}
+                    initial={{ scale: 1.1 }}
+                    animate={{ scale: 1 }}
+                    className="text-4xl font-black text-[#14B8A6] mb-1"
+                  >
+                    {formatNumber(traders)}
+                  </motion.div>
+                  <div className="text-sm text-gray-500">Active users</div>
+                </div>
+              </motion.div>
+
+              {/* Trading Fee */}
+              <motion.div 
+                whileHover={{ y: -5, scale: 1.02 }}
+                className="group relative bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 hover:border-[#14B8A6] transition-all shadow-lg hover:shadow-2xl overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-[#14B8A6]/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity"></div>
+                <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-3">
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Trading Fee</div>
+                    <motion.div 
+                      whileHover={{ rotate: 360 }}
+                      transition={{ duration: 0.5 }}
+                      className="w-8 h-8 rounded-lg bg-[#14B8A6]/10 flex items-center justify-center group-hover:bg-[#14B8A6]/20 transition-colors"
+                    >
+                      <svg className="w-4 h-4 text-[#14B8A6]" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M12 6v12m-3-2.818l.879.659c1.171.879 3.07.879 4.242 0 1.172-.879 1.172-2.303 0-3.182C13.536 12.219 12.768 12 12 12c-.725 0-1.45-.22-2.003-.659-1.106-.879-1.106-2.303 0-3.182s2.9-.879 4.006 0l.415.33M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                      </svg>
+                    </motion.div>
+                  </div>
+                  <div className="text-4xl font-black text-[#14B8A6] mb-1">0.5%</div>
+                  <div className="text-sm text-gray-500">Ultra low</div>
+                </div>
+              </motion.div>
+            </motion.div>
+
+            {/* Feature Pills */}
+            <motion.div 
+              initial={{ y: 30, opacity: 0 }}
+              animate={{ y: 0, opacity: 1 }}
+              transition={{ delay: 1.1, duration: 0.8 }}
+              className="flex flex-wrap items-center justify-center gap-4"
+            >
+              {[
+                'Instant Settlement',
+                'Oracle Verified',
+                'Non-Custodial',
+                'CPMM Powered'
+              ].map((feature, index) => (
+                <motion.div
+                  key={feature}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: 1.2 + index * 0.1 }}
+                  whileHover={{ scale: 1.05 }}
+                  className="flex items-center gap-2 px-5 py-3 rounded-full bg-white/80 backdrop-blur-sm border border-gray-200 shadow-lg hover:border-[#14B8A6] hover:shadow-xl transition-all"
+                >
+                  <svg className="w-5 h-5 text-[#14B8A6]" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                  </svg>
+                  <span className="text-sm font-semibold text-gray-700">{feature}</span>
+                </motion.div>
+              ))}
+            </motion.div>
           </div>
         </div>
-      </section>
+
+        {/* How It Works Section */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          whileInView={{ opacity: 1 }}
+          viewport={{ once: true }}
+          transition={{ duration: 0.8 }}
+          className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20"
+        >
+          <div className="text-center mb-12">
+            <motion.div 
+              initial={{ scale: 0 }}
+              whileInView={{ scale: 1 }}
+              viewport={{ once: true }}
+              className="inline-block text-sm font-bold text-[#14B8A6] uppercase tracking-wider mb-3"
+            >
+              How It Works
+            </motion.div>
+            <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+              Start Trading in 3 Steps
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            {[
+              {
+                step: '1',
+                title: 'Create or Join',
+                description: 'Browse active markets or create your own prediction market',
+                icon: (
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z" />
+                  </svg>
+                )
+              },
+              {
+                step: '2',
+                title: 'Choose YES / NO',
+                description: 'Place your bet on the outcome you believe will happen',
+                icon: (
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )
+              },
+              {
+                step: '3',
+                title: 'Earn Rewards',
+                description: 'Win rewards when your prediction is correct',
+                icon: (
+                  <svg className="w-8 h-8" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                  </svg>
+                )
+              }
+            ].map((item, index) => (
+              <motion.div
+                key={item.step}
+                initial={{ y: 50, opacity: 0 }}
+                whileInView={{ y: 0, opacity: 1 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.2 }}
+                whileHover={{ y: -10 }}
+                className="relative bg-white/80 backdrop-blur-sm rounded-2xl p-8 border border-gray-100 shadow-lg hover:shadow-2xl transition-all"
+              >
+                <div className="flex flex-col items-center text-center">
+                  <div className="w-16 h-16 bg-gradient-to-br from-[#14B8A6] to-[#0D9488] rounded-2xl flex items-center justify-center text-white mb-6 shadow-xl">
+                    {item.icon}
+                  </div>
+                  <div className="text-5xl font-black text-[#14B8A6]/20 absolute top-4 right-6">
+                    {item.step}
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 mb-3">{item.title}</h3>
+                  <p className="text-gray-600 leading-relaxed">{item.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* Live Markets Preview */}
+        {liveMarkets.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.8 }}
+            className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-20"
+          >
+            <div className="text-center mb-12">
+              <motion.div 
+                initial={{ scale: 0 }}
+                whileInView={{ scale: 1 }}
+                viewport={{ once: true }}
+                className="inline-block text-sm font-bold text-[#14B8A6] uppercase tracking-wider mb-3"
+              >
+                Live Markets
+              </motion.div>
+              <h2 className="text-4xl md:text-5xl font-bold text-gray-900 mb-4">
+                Active Prediction Markets
+              </h2>
+              <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+                Trade on live markets with real-time pricing and instant execution
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+              {liveMarkets.map((market, index) => (
+                <motion.div
+                  key={market.id}
+                  initial={{ y: 50, opacity: 0 }}
+                  whileInView={{ y: 0, opacity: 1 }}
+                  viewport={{ once: true }}
+                  transition={{ delay: index * 0.1 }}
+                  whileHover={{ y: -5 }}
+                  className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-gray-100 shadow-lg hover:shadow-2xl transition-all hover:border-[#14B8A6]"
+                >
+                  <div className="flex items-start justify-between mb-4">
+                    <div className="text-xs font-bold text-gray-500 uppercase tracking-wider">Live Trading</div>
+                    <div className="px-2.5 py-1 rounded-full bg-[#14B8A6]/10 text-[#14B8A6] text-xs font-semibold">
+                      Finance
+                    </div>
+                  </div>
+
+                  <h3 className="font-bold text-gray-900 text-lg mb-4 line-clamp-2">
+                    {market.question}
+                  </h3>
+
+                  <div className="space-y-2 mb-4">
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-gray-600">YES</span>
+                      <span className="text-2xl font-black text-[#14B8A6]">
+                        ${parseFloat(market.priceYes).toFixed(3)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-sm font-semibold text-gray-600">NO</span>
+                      <span className="text-2xl font-black text-red-500">
+                        ${parseFloat(market.priceNo).toFixed(3)}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="mb-4">
+                    <div className="flex justify-between text-xs text-gray-500 mb-1">
+                      <span>YES {(parseFloat(market.priceYes) * 100).toFixed(1)}%</span>
+                      <span>NO {(parseFloat(market.priceNo) * 100).toFixed(1)}%</span>
+                    </div>
+                    <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <motion.div 
+                        initial={{ width: 0 }}
+                        whileInView={{ width: `${parseFloat(market.priceYes) * 100}%` }}
+                        viewport={{ once: true }}
+                        transition={{ duration: 1, delay: index * 0.1 }}
+                        className="h-full bg-gradient-to-r from-[#14B8A6] to-[#0D9488]"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="text-xs text-gray-500 mb-4">
+                    Volume: <span className="font-semibold text-gray-700">{formatVolume(market.volume)}</span>
+                  </div>
+
+                  <Link href={`/markets/${market.id}`}>
+                    <motion.button 
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      className="w-full rounded-xl bg-[#14B8A6] px-4 py-3 text-sm font-semibold text-white hover:bg-[#0D9488] transition-colors shadow-lg"
+                    >
+                      Trade Market
+                    </motion.button>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+
+            <div className="text-center">
+              <motion.div whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }}>
+                <Link
+                  href="/markets"
+                  className="inline-flex items-center justify-center h-14 px-8 rounded-full bg-gradient-to-r from-[#14B8A6] to-[#0D9488] text-base font-bold text-white shadow-xl hover:shadow-2xl transition-all"
+                >
+                  View All Markets
+                  <svg className="ml-2 w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                  </svg>
+                </Link>
+              </motion.div>
+            </div>
+          </motion.div>
+        )}
+      </main>
 
       {/* Footer */}
-      <footer className="bg-[#FAF9FF] border-t border-gray-200 py-12">
+      <footer className="relative z-10 border-t border-white/20 backdrop-blur-sm bg-white/30 py-8 mt-20">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-4">Product</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><Link href="/markets" className="hover:text-[#14B8A6]">Markets</Link></li>
-                <li><Link href="/admin" className="hover:text-[#14B8A6]">Create Market</Link></li>
-                <li><a href="#" className="hover:text-[#14B8A6]">API</a></li>
-              </ul>
+          <div className="flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-sm text-gray-600">© 2025 SpeculateX. All rights reserved.</p>
+            <div className="flex items-center gap-6 text-sm text-gray-600">
+              <a href="#" className="hover:text-[#14B8A6] transition-colors">Docs</a>
+              <a href="#" className="hover:text-[#14B8A6] transition-colors">Twitter</a>
+              <a href="#" className="hover:text-[#14B8A6] transition-colors">Discord</a>
+              <a href="#" className="hover:text-[#14B8A6] transition-colors">GitHub</a>
             </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-4">Resources</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-[#14B8A6]">Documentation</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6]">FAQ</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6]">Blog</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-4">Community</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-[#14B8A6]">Discord</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6]">Twitter</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6]">Governance</a></li>
-              </ul>
-            </div>
-            <div>
-              <h4 className="font-semibold text-gray-900 mb-4">Legal</h4>
-              <ul className="space-y-2 text-sm text-gray-600">
-                <li><a href="#" className="hover:text-[#14B8A6]">Privacy</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6]">Terms</a></li>
-                <li><a href="#" className="hover:text-[#14B8A6]">Security</a></li>
-              </ul>
-            </div>
-          </div>
-          <div className="border-t border-gray-200 pt-8 flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm text-gray-500">© 2023 SpeculateX. All rights reserved.</p>
-            <p className="text-sm text-gray-500 mt-2 md:mt-0">Built for the decentralized web</p>
           </div>
         </div>
       </footer>
+
+      <style jsx global>{`
+        @keyframes gradient {
+          0%, 100% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+        }
+        .animate-gradient {
+          background-size: 200% 200%;
+          animation: gradient 3s ease infinite;
+        }
+      `}</style>
     </div>
   );
 }

@@ -64,11 +64,13 @@ export default function AdminPage() {
 
   if (!isConnected) {
     return (
-      <div className="min-h-screen bg-slate-100">
+      <div className="min-h-screen bg-[#FAF9FF]">
         <Header />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Panel</h1>
-          <p className="text-gray-600">Please connect your wallet</p>
+          <div className="bg-white rounded-xl p-8 shadow-lg border border-gray-200">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Admin Panel</h1>
+            <p className="text-gray-600">Please connect your wallet to access the admin panel</p>
+          </div>
         </div>
       </div>
     );
@@ -76,49 +78,63 @@ export default function AdminPage() {
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-slate-100">
+      <div className="min-h-screen bg-[#FAF9FF]">
         <Header />
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-          <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Panel</h1>
-          <p className="text-red-600">Access denied. Only admin can access this page.</p>
+          <div className="bg-white rounded-xl p-8 shadow-lg border border-red-200">
+            <h1 className="text-3xl font-bold text-gray-900 mb-4">Admin Panel</h1>
+            <div className="bg-red-50 border border-red-200 rounded-lg p-4">
+              <p className="text-red-700 font-semibold">Access Denied</p>
+              <p className="text-red-600 text-sm mt-2">Only administrators can access this page. Your address ({address?.slice(0, 6)}...{address?.slice(-4)}) is not authorized.</p>
+            </div>
+          </div>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-slate-100">
+    <div className="min-h-screen bg-[#FAF9FF]">
       <Header />
       <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-8">Admin Panel</h1>
+        <div className="mb-8">
+          <h1 className="text-4xl font-bold text-gray-900 mb-2">Admin Panel</h1>
+          <p className="text-gray-600">Manage markets, admins, and system settings</p>
+        </div>
         
         <div className="mb-8">
-          <MintUsdcForm />
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
+            <h2 className="text-xl font-semibold text-gray-900 mb-4">USDC Minting</h2>
+            <MintUsdcForm />
+          </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-8 mb-8">
-          <div>
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Create Market</h2>
             <CreateMarketForm />
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
-          <div>
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Admin Management</h2>
             <AdminManager />
           </div>
-          <div>
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">USDC Minter Management</h2>
             <USDCMinterManager />
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
-          <div>
+          <div className="bg-white rounded-xl p-6 shadow-lg border border-gray-200">
             <h2 className="text-xl font-semibold text-gray-900 mb-4">Manage Markets</h2>
             {loading ? (
-              <p className="text-gray-500">Loading markets...</p>
+              <div className="text-center py-12">
+                <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-[#14B8A6]"></div>
+                <p className="mt-4 text-gray-500">Loading markets...</p>
+              </div>
             ) : (
               <AdminMarketManager markets={markets} />
             )}
