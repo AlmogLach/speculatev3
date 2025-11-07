@@ -1,105 +1,105 @@
-# SpeculateX v3 - Prediction Market Platform
+# 🧠 SpeculateX Protocol
 
-A decentralized prediction market platform built on BNB Smart Chain (BSC) Testnet using DirectCore pricing mechanism.
+**Dynamic prediction markets powered by Chainlink automation, boosted AMM math, and a polished Next.js UX.**
 
-## Features
+---
 
-- **Direct Pricing Model**: Simple USDC ↔ YES/NO token pricing where price = per-token cost
-- **No Initial Liquidity Required**: Markets start with just an initial price (e.g., 50/50)
-- **Admin Controls**: 
-  - Create markets with configurable fees (0.1% - 10%)
-  - Adjustable price sensitivity
-  - Market pause/unpause functionality
-- **Treasury System**: Collects and manages trading fees
-- **Full Trading**: Buy and sell YES/NO tokens with real-time price updates
+## 🌍 Live App
 
-## Tech Stack
+[https://speculatev3.vercel.app](https://speculatev3.vercel.app)
 
-- **Frontend**: Next.js 14, React, TypeScript, Tailwind CSS, Wagmi, Viem
-- **Smart Contracts**: Solidity 0.8.24, Foundry, OpenZeppelin
-- **Chain**: BNB Smart Chain Testnet
 
-## Project Structure
+## 📦 Tech Stack
 
-```
-speculate-v3/
-├── contracts/          # Smart contracts (DirectCore, MockUSDC, PositionToken, Treasury)
-│   ├── src/
-│   ├── script/
-│   └── out/
-├── frontend/           # Next.js frontend
-│   ├── app/
-│   ├── components/
-│   └── lib/
-└── README.md
-```
+- Next.js 14, React, TypeScript, Tailwind CSS
+- Wagmi + Viem for wallet connectivity
+- Solidity 0.8.24 (Foundry toolchain)
+- Chainlink Automation & Price Feeds
+- BNB Smart Chain Testnet (Chain ID 97)
 
-## Smart Contracts
 
-### DirectCore
-Main market contract implementing direct USDC ↔ YES pricing:
-- Markets start with 0 liquidity, just an initial price
-- Buy: Pay USDC → Get tokens at current price → Price moves up
-- Sell: Return tokens → Get USDC at current price → Price moves down
-- Admin-configurable sensitivity (0.1% - 5%)
+## ⚙️ Core Features
 
-### MockUSDC
-Test USDC token for BSC Testnet (6 decimals)
+- Boosted constant-product AMM for YES/NO markets with slippage-aware trading
+- Automated market resolution via Chainlink Automation + global price feeds
+- Admin dashboard to create markets with configurable Chainlink parameters
+- Auto-approval, recommended slippage, and full mobile-ready trading UI
+- 2% buy fee split: 1% protocol, 0.5% LP, 0.5% back into pool (no sell fee by default)
+- Real-time subgraph indexing for performance stats and dashboards
 
-### PositionToken
-YES/NO position tokens (18 decimals, mintable/burnable)
 
-### Treasury
-Fee collection contract (optional)
+## 🔐 Smart Contracts (BSC Testnet)
 
-## Frontend Features
+- `SpeculateCore.sol` – boosted AMM, fee logic, Chainlink-aware market management
+- `ChainlinkResolver.sol` – single upkeep that scans & resolves all markets
+- `PositionToken.sol` – outcome tokens (YES/NO, ERC20-compatible)
+- `Treasury.sol` – protocol fee vault (withdraw-only by owner)
+- `MockUSDC.sol` – 6-decimal test token for local + testnet use
 
-- **Home Page**: Market overview and stats
-- **Markets Page**: Browse all markets with filters
-- **Market Detail Page**: View market stats and trade
-- **Admin Panel**: Create markets, manage sensitivity
-- **Trading Interface**: Buy/sell with real-time estimates
+Latest deployments (Nov 2025):
 
-## Getting Started
+| Contract | Address |
+| --- | --- |
+| SpeculateCore | `0x05d0e1Ab46c3e18610730ee36Aa767Df0D60Ae55` |
+| ChainlinkResolver | `0x3a944a20c4fA46785B5FF6044F751D918e9DF31D` |
+| Treasury | `0x242b6Cf7Ee87cb10Ea5cb157bF4fee4E39bC2AfA` |
+| MockUSDC | `0x0E5cB1F812ce0402fdF0c9cee2E1FE3BF351a827` |
 
-### Prerequisites
-- Node.js 18+
-- Foundry
-- MetaMask or compatible wallet
 
-### Frontend Setup
+## 🛰️ Subgraph
+
+- **Endpoint:** `https://api.studio.thegraph.com/query/1704746/speculate-v-3/v0.0.9`
+- Indexes markets, trades, and liquidity stats for the entire protocol.
+
+
+## 🚀 Quick Start
+
 ```bash
-cd frontend
+# Frontend
+cd speculate-v3/frontend
 npm install
 npm run dev
-```
 
-### Contract Setup
-```bash
-cd contracts
+# Contracts
+cd speculate-v3/contracts
 forge install
 forge build
 ```
 
-### Environment Variables
+Environment variables:
 
-Create `frontend/.env.local`:
-```
-NEXT_PUBLIC_CORE_ADDRESS=0x...
-NEXT_PUBLIC_USDC_ADDRESS=0x...
-NEXT_PUBLIC_ADMIN_ADDRESS=0x...
+```bash
+# frontend/.env.local
+NEXT_PUBLIC_CORE_ADDRESS=0x05d0e1Ab46c3e18610730ee36Aa767Df0D60Ae55
+NEXT_PUBLIC_USDC_ADDRESS=0x0E5cB1F812ce0402fdF0c9cee2E1FE3BF351a827
+NEXT_PUBLIC_ADMIN_ADDRESS=0xbd0e87A678f3D53a27D1bb186cfc8fd465433554
+NEXT_PUBLIC_CHAINLINK_RESOLVER_ADDRESS=0x3a944a20c4fA46785B5FF6044F751D918e9DF31D
+NEXT_PUBLIC_TREASURY_ADDRESS=0x242b6Cf7Ee87cb10Ea5cb157bF4fee4E39bC2AfA
+NEXT_PUBLIC_SUBGRAPH_URL=https://api.studio.thegraph.com/query/1704746/speculate-v-3/v0.0.9
 NEXT_PUBLIC_CHAIN_ID=97
+
+# contracts/.env
+PRIVATE_KEY=0x<testnet-deployer>
+BSC_TESTNET_RPC_URL=https://data-seed-prebsc-1-s1.binance.org:8545/
+USDC_ADDRESS=0x0E5cB1F812ce0402fdF0c9cee2E1FE3BF351a827
+TREASURY_ADDRESS=0x242b6Cf7Ee87cb10Ea5cb157bF4fee4E39bC2AfA
 ```
 
-Create `contracts/.env`:
-```
-PRIVATE_KEY=0x...
-```
 
-## Deployment
+## 🧪 Key Workflows
 
-See `contracts/DEPLOY_GUIDE.md` for deployment instructions.
+- `DeployCoreOnly.s.sol` — redeploys SpeculateCore
+- `DeployTreasury.s.sol` + `SetTreasury.s.sol` — fee vault setup
+- `SetupGlobalFeeds.s.sol` — registers Chainlink price feeds in the resolver
+- `SpeculateCoreRoundTrip.t.sol` — Forge test covering buy→sell round trips
 
-## License
+
+## 👨‍👨‍👧‍👦 Team
+
+- **Almog Lachiany** — Solidity + Frontend + Product
+- Contributions welcome: open an issue or PR in this repo.
+
+
+## 📜 License
 
 MIT

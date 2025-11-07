@@ -297,11 +297,21 @@ export default function TradingCard({ marketId, question }: TradingCardProps) {
 
   const [pendingTrade, setPendingTrade] = useState(false);
   useEffect(() => {
-    if (isApprovalSuccess && pendingTrade) {
-      setPendingTrade(false);
-      setTimeout(() => handleTrade(), 1000);
+    if (!isApprovalSuccess) return;
+
+    if (tradeMode === 'buy') {
+      refetchUsdcAllowance?.();
+      setNeedsApproval(false);
+    } else if (tradeMode === 'sell') {
+      refetchTokenAllowance?.();
+      setNeedsTokenApproval(false);
     }
-  }, [isApprovalSuccess, pendingTrade]);
+
+    if (pendingTrade) {
+      setPendingTrade(false);
+      setTimeout(() => handleTrade(), 300);
+    }
+  }, [isApprovalSuccess, tradeMode, pendingTrade, refetchUsdcAllowance, refetchTokenAllowance]);
 
   // --- Trade ---
   const handleTrade = async () => {
