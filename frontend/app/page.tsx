@@ -1,58 +1,91 @@
-'use client';
 // @ts-nocheck
+'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
-import { getMarketCount } from '@/lib/hooks';
-import { useReadContract } from 'wagmi';
+import { getMarketCount, getMarket } from '@/lib/hooks';
+import { formatUnits } from 'viem';
+import { useQuery } from '@tanstack/react-query';
+import { fetchUniqueTradersCount } from '@/lib/subgraph';
 import { addresses } from '@/lib/contracts';
 import { usdcAbi } from '@/lib/abis';
-import { formatUnits } from 'viem';
 
 export default function Home() {
   const [marketCount, setMarketCount] = useState<number>(0);
-  const [traders, setTraders] = useState<number>(3800);
-
-  const { data: coreUsdcBalance } = useReadContract({
-    address: addresses.usdc,
-    abi: usdcAbi,
-    functionName: 'balanceOf',
-    args: [addresses.core],
+  const [stats, setStats] = useState({
+    liquidity: 0,
+    live: 0,
+    resolved: 0,
+    expired: 0,
   });
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(() => {
-      setTraders(prev => prev + Math.floor(Math.random() * 3));
-    }, 5000);
-    return () => clearInterval(interval);
   }, []);
 
   const loadData = async () => {
     try {
-      const count = await getMarketCount();
-      setMarketCount(Number(count));
+      const countBn = await getMarketCount();
+      const count = Number(countBn);
+      setMarketCount(count);
+
+      if (count === 0) {
+        setStats({ liquidity: 0, live: 0, resolved: 0, expired: 0 });
+        return;
+      }
+
+      let liquidity = 0;
+      let live = 0;
+      let resolved = 0;
+      let expired = 0;
+
+      for (let i = 1; i <= count; i++) {
+        const market = await getMarket(BigInt(i));
+        if (!market.exists) continue;
+
+        liquidity += Number(formatUnits(market.totalPairsUSDC, 6));
+
+        if (market.status === 0) {
+          live += 1;
+        } else if (market.status === 1) {
+          resolved += 1;
+        } else {
+          expired += 1;
+        }
+      }
+
+      setStats({ liquidity, live, resolved, expired });
     } catch (error) {
       console.error('Error loading data:', error);
     }
   };
+  const { data: traders = 0 } = useQuery({
+    queryKey: ['uniqueTraders-home'],
+    queryFn: async () => {
+      try {
+        return await fetchUniqueTradersCount();
+      } catch (error) {
+        console.error('Error fetching trader count:', error);
+        return 0;
+      }
+    },
+    refetchInterval: 60_000,
+  });
 
-  const totalVolume = coreUsdcBalance && typeof coreUsdcBalance === 'bigint' 
-    ? parseFloat(formatUnits(coreUsdcBalance, 6)) 
-    : 0;
+  const formatCurrency = useCallback((value: number) => {
+    if (value >= 1_000_000) return `$${(value / 1_000_000).toFixed(1)}M`;
+    if (value >= 1_000) return `$${(value / 1_000).toFixed(1)}K`;
+    return `$${value.toFixed(0)}`;
+  }, []);
 
-  const formatVolume = (vol: number) => {
-    if (vol >= 1000000) return `$${(vol / 1000000).toFixed(1)}M`;
-    if (vol >= 1000) return `$${(vol / 1000).toFixed(1)}K`;
-    return `$${vol.toFixed(0)}`;
-  };
+  const formatNumber = useCallback((value: number) => {
+    if (value >= 1000) return `${(value / 1000).toFixed(1)}K`;
+    return value.toString();
+  }, []);
 
-  const formatNumber = (num: number) => {
-    if (num >= 1000) return `${(num / 1000).toFixed(1)}K`;
-    return num.toString();
-  };
+  const liquidityDisplay = useMemo(() => formatCurrency(stats.liquidity), [stats.liquidity, formatCurrency]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-purple-50 to-pink-50 relative overflow-hidden">
@@ -239,9 +272,9 @@ export default function Home() {
                 animate={{ scale: 1, opacity: 1 }}
                 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1"
               >
-                {marketCount || '7'}
+                {formatNumber(stats.live)}
               </motion.div>
-              <div className="text-xs sm:text-sm text-gray-500">Live trading</div>
+              <div className="text-xs sm:text-sm text-gray-500">Live markets</div>
             </motion.div>
 
             {/* Total Volume */}
@@ -262,9 +295,9 @@ export default function Home() {
                 </motion.div>
               </div>
               <div className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1">
-                {formatVolume(totalVolume) || '$10.8K'}
+                {liquidityDisplay}
               </div>
-              <div className="text-xs sm:text-sm text-gray-500">All time</div>
+              <div className="text-xs sm:text-sm text-gray-500">USDC pooled</div>
             </motion.div>
 
             {/* Traders */}
@@ -285,14 +318,14 @@ export default function Home() {
                 </motion.div>
               </div>
               <motion.div 
-                key={traders}
+                key={typeof traders === 'number' ? traders : Number(traders) || 0}
                 initial={{ scale: 1.1 }}
                 animate={{ scale: 1 }}
                 className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1"
               >
-                {formatNumber(traders)}
+                {formatNumber(typeof traders === 'number' ? traders : Number(traders) || 0)}
               </motion.div>
-              <div className="text-xs sm:text-sm text-gray-500">Active users</div>
+              <div className="text-xs sm:text-sm text-gray-500">Active traders</div>
             </motion.div>
 
             {/* Trading Fee */}
@@ -312,8 +345,8 @@ export default function Home() {
                   </svg>
                 </motion.div>
               </div>
-              <div className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1">0.5%</div>
-              <div className="text-xs sm:text-sm text-gray-500">Ultra low</div>
+              <div className="text-2xl sm:text-3xl md:text-4xl font-black text-[#14B8A6] mb-1">2%</div>
+              <div className="text-xs sm:text-sm text-gray-500">Treasury + LP</div>
             </motion.div>
           </motion.div>
 

@@ -8,7 +8,7 @@ import { coreAbi as SpeculateCoreABI } from '@/lib/abis';
 interface Market {
   id: number;
   question: string;
-  status: 'active' | 'paused' | 'resolved';
+  status: 'active' | 'resolved';
   totalPairs: number;
 }
 
@@ -32,20 +32,6 @@ export default function AdminMarketManager({ markets }: AdminMarketManagerProps)
     } catch (error) {
       console.error('Error resolving market:', error);
       alert('Failed to resolve market');
-    }
-  };
-
-  const handlePause = async (marketId: number, pause: boolean) => {
-    try {
-      writeContract({
-        address: addresses.core,
-                abi: SpeculateCoreABI,
-        functionName: pause ? 'pauseMarket' : 'unpauseMarket',
-        args: [BigInt(marketId)],
-      });
-    } catch (error) {
-      console.error('Error pausing market:', error);
-      alert('Failed to pause/unpause market');
     }
   };
 
@@ -77,32 +63,23 @@ export default function AdminMarketManager({ markets }: AdminMarketManagerProps)
                   Status: {market.status} • Pairs: {market.totalPairs}
                 </p>
               </div>
-              <div className="flex gap-2">
+              <div className="flex gap-1">
                 <button
-                  onClick={() => handlePause(market.id, market.status === 'active')}
-                  className="rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
+                  onClick={() => handleResolve(market.id, true)}
                   disabled={market.status === 'resolved' || isPending || isConfirming}
+                  className="rounded-md bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-500 disabled:opacity-50"
+                  title="Resolve as YES wins"
                 >
-                  {market.status === 'active' ? 'Pause' : 'Unpause'}
+                  Resolve YES
                 </button>
-                <div className="flex gap-1">
-                  <button
-                    onClick={() => handleResolve(market.id, true)}
-                    disabled={market.status === 'resolved' || isPending || isConfirming}
-                    className="rounded-md bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-500 disabled:opacity-50"
-                    title="Resolve as YES wins"
-                  >
-                    Resolve YES
-                  </button>
-                  <button
-                    onClick={() => handleResolve(market.id, false)}
-                    disabled={market.status === 'resolved' || isPending || isConfirming}
-                    className="rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-500 disabled:opacity-50"
-                    title="Resolve as NO wins"
-                  >
-                    Resolve NO
-                  </button>
-                </div>
+                <button
+                  onClick={() => handleResolve(market.id, false)}
+                  disabled={market.status === 'resolved' || isPending || isConfirming}
+                  className="rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-500 disabled:opacity-50"
+                  title="Resolve as NO wins"
+                >
+                  Resolve NO
+                </button>
               </div>
             </div>
           ))

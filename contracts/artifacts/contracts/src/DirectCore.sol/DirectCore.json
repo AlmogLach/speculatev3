@@ -1,0 +1,10 @@
+{
+  "_format": "hh-sol-artifact-1",
+  "contractName": "DirectCore",
+  "sourceName": "contracts/src/DirectCore.sol",
+  "abi": [],
+  "bytecode": "0x60808060405234601357603a908160198239f35b600080fdfe600080fdfea26469706673582212206bf72646e92aac6ed1d8cf34de1c5c65d0130bdc19daa015eed301e8e6242daf64736f6c63430008180033",
+  "deployedBytecode": "0x600080fdfea26469706673582212206bf72646e92aac6ed1d8cf34de1c5c65d0130bdc19daa015eed301e8e6242daf64736f6c63430008180033",
+  "linkReferences": {},
+  "deployedLinkReferences": {}
+}

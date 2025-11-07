@@ -1,10 +1,10 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
-import { SearchIcon, SlidersHorizontalIcon } from 'lucide-react';
+import { SearchIcon, SlidersHorizontalIcon, XIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import { Badge, Button, Card, CardContent, Input } from '@/components/ui';
 import { getMarketCount, getMarket, getPriceYes, getPriceNo, getMarketResolution } from '@/lib/hooks';
@@ -145,7 +145,7 @@ interface MarketCard {
   volume: number;
   yesPercent: number;
   noPercent: number;
-  status: 'LIVE TRADING' | 'FUNDING' | 'RESOLVED' | 'EXPIRED';
+  status: 'LIVE TRADING' | 'EXPIRED' | 'RESOLVED';
   totalPairsUSDC: bigint;
   expiryTimestamp: bigint;
   oracleType: number; // 0 = None, 1 = ChainlinkFeed, 2 = ChainlinkFunctions
@@ -159,16 +159,11 @@ export default function MarketsPage() {
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
-
-  const { data: coreUsdcBalance } = useReadContract({
-    address: addresses.usdc,
-    abi: usdcAbi,
-    functionName: 'balanceOf',
-    args: [addresses.core],
-    query: {
-      enabled: true,
-    },
-  });
+  const [showFilters, setShowFilters] = useState(false);
+  const [showResolved, setShowResolved] = useState(true);
+  const [showExpired, setShowExpired] = useState(true);
+  const [minLiquidity, setMinLiquidity] = useState('');
+  const [oracleFilter, setOracleFilter] = useState<'all' | 'manual' | 'chainlink'>('all');
 
   useEffect(() => {
     loadMarkets();
@@ -202,40 +197,34 @@ export default function MarketsPage() {
           ]);
           
           if (!market.exists) return null;
-          
+
           const totalPairs = Number(formatUnits(market.totalPairsUSDC as bigint, 6));
           const statusNum = Number(market.status);
-          
+
           // Determine status based on resolution and expiry
           const now = Math.floor(Date.now() / 1000);
           const expiryTimestamp = resolution.expiryTimestamp || 0n;
           const isExpired = expiryTimestamp > 0n && Number(expiryTimestamp) < now;
-          
-          let status: 'LIVE TRADING' | 'FUNDING' | 'RESOLVED' | 'EXPIRED' = 'LIVE TRADING';
+
+          let status: 'LIVE TRADING' | 'EXPIRED' | 'RESOLVED' = 'LIVE TRADING';
           if (resolution.isResolved) {
             status = 'RESOLVED';
           } else if (isExpired) {
             // Market has expired but not yet resolved
             status = 'EXPIRED';
-          } else if (statusNum === 1) {
-            status = 'FUNDING';
-          } else if (statusNum === 0) {
-            status = 'LIVE TRADING';
-          } else {
-            status = 'RESOLVED';
           }
-          
-          const reserveYes = Number(formatUnits(market.reserveYes as bigint, 18));
-          const reserveNo = Number(formatUnits(market.reserveNo as bigint, 18));
-          const totalReserve = reserveYes + reserveNo;
-          
+
+          const qYes = Number(formatUnits(market.qYes as bigint, 18));
+          const qNo = Number(formatUnits(market.qNo as bigint, 18));
+          const totalShares = qYes + qNo;
+
           let yesPercent = 50;
           let noPercent = 50;
-          if (totalReserve > 0) {
-            yesPercent = Math.round((reserveYes / totalReserve) * 100);
-            noPercent = Math.round((reserveNo / totalReserve) * 100);
+          if (totalShares > 0) {
+            yesPercent = Math.round((qYes / totalShares) * 100);
+            noPercent = Math.round((qNo / totalShares) * 100);
           }
-          
+
           return {
             id: i,
             question: market.question as string,
@@ -286,13 +275,66 @@ export default function MarketsPage() {
       }
       return questionLower.includes(categoryLower);
     }
-    
+
+    if (!showResolved && market.status === 'RESOLVED') return false;
+    if (!showExpired && market.status === 'EXPIRED') return false;
+
+    if (minLiquidity) {
+      const min = parseFloat(minLiquidity) || 0;
+      const liquidity = Number(formatUnits(market.totalPairsUSDC, 6));
+      if (liquidity < min) return false;
+    }
+
+    if (oracleFilter !== 'all') {
+      const isManual = market.oracleType === 0;
+      if (oracleFilter === 'manual' && !isManual) return false;
+      if (oracleFilter === 'chainlink' && isManual) return false;
+    }
+
     return true;
   });
 
-  const totalVolume = coreUsdcBalance && typeof coreUsdcBalance === 'bigint' ? parseFloat(formatUnits(coreUsdcBalance, 6)) : 0;
-  const liveMarkets = markets.filter(m => m.status === 'LIVE TRADING' || m.status === 'FUNDING').length;
-  
+  const stats = useMemo(() => {
+    if (markets.length === 0) {
+      return {
+        liquidity: 0,
+        live: 0,
+        resolved: 0,
+        expired: 0,
+        total: 0,
+      };
+    }
+
+    let liquidity = 0;
+    let live = 0;
+    let resolved = 0;
+    let expired = 0;
+
+    for (const market of markets) {
+      liquidity += Number(formatUnits(market.totalPairsUSDC, 6));
+      if (market.status === 'LIVE TRADING') live += 1;
+      else if (market.status === 'RESOLVED') resolved += 1;
+      else if (market.status === 'EXPIRED') expired += 1;
+    }
+
+    return {
+      liquidity,
+      live,
+      resolved,
+      expired,
+      total: markets.length,
+    };
+  }, [markets]);
+
+  const formatNumber = useCallback((value: number, decimals = 0) => {
+    return value.toLocaleString(undefined, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    });
+  }, []);
+
+  const liquidityDisplay = stats.liquidity >= 1 ? formatNumber(stats.liquidity, stats.liquidity >= 1000 ? 0 : 2) : formatNumber(stats.liquidity, 2);
+   
   // Fetch unique traders count from subgraph
   const { data: activeTraders = 0 } = useQuery({
     queryKey: ['uniqueTraders'],
@@ -309,8 +351,9 @@ export default function MarketsPage() {
 
   const categories = ['All', 'Crypto', 'Bitcoin', 'Ethereum', 'Politics', 'Sports', 'Tech', 'Finance'];
 
-  const getMarketLogo = (question: string): string => {
-    const q = question.toLowerCase();
+  const getMarketLogo = (question?: string | null): string => {
+    const normalized = typeof question === 'string' ? question : question != null ? String(question) : '';
+    const q = normalized.toLowerCase();
     // More specific matches first to avoid false positives
     if (q.includes('aster')) return '/logos/ASTER_solana.png';
     if (q.includes('zcash') || q.includes('zec')) return '/logos/default.png'; // ZCASH logo not available yet
@@ -399,21 +442,21 @@ export default function MarketsPage() {
 
           {/* Stats Content */}
           <div className="relative z-10 grid grid-cols-3 md:flex md:items-center md:justify-center gap-2 sm:gap-3 md:gap-12 lg:gap-20 xl:gap-32 px-3 sm:px-4 md:px-8 py-5 sm:py-6 md:py-0 min-h-[140px] md:min-h-[155px]">
-            {/* Total Volume */}
+            {/* Total Liquidity */}
             <div className="flex flex-col items-center justify-center gap-1.5 sm:gap-2 md:gap-4">
               <div className="font-inter text-gray-500 text-[9px] sm:text-[10px] md:text-[11px] text-center tracking-[0.55px] leading-[17.6px] uppercase">
-                TOTAL VOLUME
+                TOTAL LIQUIDITY
               </div>
               <div className="flex flex-col items-center gap-0.5">
                 <div className="font-inter text-[#0a0e17] text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-[32px] text-center tracking-[0] leading-tight font-bold">
-                  {totalVolume.toFixed(0)}
+                  ${liquidityDisplay}
                 </div>
                 <div className="font-inter text-[#0a0e17] text-sm sm:text-base md:text-lg lg:text-xl text-center tracking-[0] leading-tight font-bold">
-                  USDT
+                  USDC pooled
                 </div>
               </div>
-              <div className="font-inter font-bold text-[#00d1b2] text-[9px] sm:text-[10px] md:text-xs text-center tracking-[0] leading-[19.2px]">
-                +12%
+              <div className="font-inter text-[#475569] text-[9px] sm:text-[10px] md:text-xs text-center tracking-[0] leading-[19.2px]">
+                Across {stats.total} markets
               </div>
             </div>
 
@@ -423,10 +466,10 @@ export default function MarketsPage() {
                 ACTIVE TRADERS
               </div>
               <div className="font-inter text-[#0a0e17] text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-[32px] text-center tracking-[0] leading-tight font-bold">
-                {activeTraders}
+                {formatNumber(typeof activeTraders === 'number' ? activeTraders : Number(activeTraders) || 0)}
               </div>
-              <div className="font-inter font-bold text-[#00d1b2] text-[9px] sm:text-[10px] md:text-xs text-center tracking-[0] leading-[19.2px]">
-                +18 today
+              <div className="font-inter text-[#475569] text-[9px] sm:text-[10px] md:text-xs text-center tracking-[0] leading-[19.2px]">
+                Updated every minute
               </div>
             </div>
 
@@ -436,10 +479,10 @@ export default function MarketsPage() {
                 LIVE MARKETS
               </div>
               <div className="font-inter text-[#0a0e17] text-lg sm:text-xl md:text-2xl lg:text-3xl xl:text-[32px] text-center tracking-[0] leading-tight font-bold">
-                {liveMarkets}
+                {formatNumber(stats.live)}
               </div>
-              <div className="font-inter font-bold text-[#00d1b2] text-[9px] sm:text-[10px] md:text-xs text-center tracking-[0] leading-[19.2px]">
-                3 closing
+              <div className="font-inter text-[#475569] text-[9px] sm:text-[10px] md:text-xs text-center tracking-[0] leading-[19.2px]">
+                Resolved: {formatNumber(stats.resolved)} • Awaiting: {formatNumber(stats.expired)}
               </div>
             </div>
           </div>
@@ -474,13 +517,104 @@ export default function MarketsPage() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button
-              variant="outline"
-              className="h-12 px-6 bg-[#ffffff01] rounded-2xl border-[#e5e6ea80] shadow-[0px_1px_2px_#0000000d] [font-family:'Geist',Helvetica] font-medium text-[#0f0a2e] text-sm hover:bg-white transition-colors"
-            >
-              <SlidersHorizontalIcon className="w-4 h-4 mr-2" />
-              More Filters
-            </Button>
+            <div className="relative">
+              <Button
+                variant="outline"
+                onClick={() => setShowFilters(prev => !prev)}
+                className="h-12 px-6 bg-[#ffffff01] rounded-2xl border-[#e5e6ea80] shadow-[0px_1px_2px_#0000000d] [font-family:'Geist',Helvetica] font-medium text-[#0f0a2e] text-sm hover:bg-white transition-colors"
+              >
+                <SlidersHorizontalIcon className="w-4 h-4 mr-2" />
+                More Filters
+              </Button>
+
+              {showFilters && (
+                <div className="absolute right-0 mt-3 w-80 bg-white border border-gray-200 rounded-2xl shadow-xl p-5 z-20">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-semibold text-gray-900">Advanced Filters</h3>
+                    <button
+                      onClick={() => setShowFilters(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <XIcon className="w-4 h-4" />
+                    </button>
+                  </div>
+
+                  <div className="space-y-4">
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 uppercase">Market Status</label>
+                      <div className="mt-2 space-y-2">
+                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={showResolved}
+                            onChange={(e) => setShowResolved(e.target.checked)}
+                            className="rounded border-gray-300 text-[#14B8A6] focus:ring-[#14B8A6]"
+                          />
+                          Show resolved markets
+                        </label>
+                        <label className="flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="checkbox"
+                            checked={showExpired}
+                            onChange={(e) => setShowExpired(e.target.checked)}
+                            className="rounded border-gray-300 text-[#14B8A6] focus:ring-[#14B8A6]"
+                          />
+                          Show awaiting resolution
+                        </label>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 uppercase">Minimum Liquidity (USDC)</label>
+                      <input
+                        type="number"
+                        value={minLiquidity}
+                        onChange={(e) => setMinLiquidity(e.target.value)}
+                        placeholder="e.g. 500"
+                        className="mt-2 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#14B8A6]"
+                      />
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-semibold text-gray-500 uppercase">Oracle Type</label>
+                      <div className="mt-2 space-y-2">
+                        {[
+                          { label: 'All', value: 'all' },
+                          { label: 'Manual resolution', value: 'manual' },
+                          { label: 'Chainlink', value: 'chainlink' },
+                        ].map(option => (
+                          <label key={option.value} className="flex items-center gap-2 text-sm text-gray-700">
+                            <input
+                              type="radio"
+                              name="oracle-filter"
+                              value={option.value}
+                              checked={oracleFilter === option.value}
+                              onChange={() => setOracleFilter(option.value as typeof oracleFilter)}
+                              className="text-[#14B8A6] focus:ring-[#14B8A6]"
+                            />
+                            {option.label}
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Button
+                      variant="outline"
+                      onClick={() => {
+                        setShowFilters(false);
+                        setShowResolved(true);
+                        setShowExpired(true);
+                        setMinLiquidity('');
+                        setOracleFilter('all');
+                      }}
+                      className="w-full justify-center"
+                    >
+                      Reset filters
+                    </Button>
+                  </div>
+                </div>
+              )}
+            </div>
           </div>
 
           <div className="mb-6">

@@ -5,11 +5,11 @@ import { useEffect, useState, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
+import { useAccount, useWriteContract } from 'wagmi';
 import { getMarketCount, getMarket, getPriceYes, getPriceNo, getMarketResolution } from '@/lib/hooks';
 import { addresses } from '@/lib/contracts';
 import { coreAbi, positionTokenAbi } from '@/lib/abis';
-import { formatUnits, parseUnits, createPublicClient, http } from 'viem';
+import { formatUnits, createPublicClient, http } from 'viem';
 import { bscTestnet } from 'viem/chains';
 
 interface ClaimableReward {
@@ -25,6 +25,8 @@ interface ClaimableReward {
   noPrice: number;
 }
 
+const CLAIMED_STORAGE_KEY = 'claimedRewards';
+
 export default function ClaimPage() {
   const { address, isConnected } = useAccount();
   const [activeTab, setActiveTab] = useState<'available' | 'history'>('available');
@@ -32,11 +34,11 @@ export default function ClaimPage() {
   const [totalClaimed, setTotalClaimed] = useState(0);
   const [claimableRewards, setClaimableRewards] = useState<ClaimableReward[]>([]);
   const [claimHistory, setClaimHistory] = useState<ClaimableReward[]>([]);
+  const [claimedIds, setClaimedIds] = useState<Set<number>>(new Set());
   const [loading, setLoading] = useState(true);
   const [claimingId, setClaimingId] = useState<number | null>(null);
 
-  const { data: claimHash, writeContract, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash: claimHash });
+  const { writeContractAsync, isPending } = useWriteContract();
 
   const publicClient = useMemo(() => createPublicClient({
     chain: bscTestnet,
@@ -50,12 +52,35 @@ export default function ClaimPage() {
     }
 
     try {
+      let storedHistory: ClaimableReward[] = [];
+      try {
+        const stored = localStorage.getItem(CLAIMED_STORAGE_KEY);
+        if (stored) {
+          storedHistory = JSON.parse(stored);
+          setClaimHistory(storedHistory);
+          setClaimedIds(new Set(storedHistory.map((r) => r.marketId)));
+        } else {
+          setClaimHistory([]);
+          setClaimedIds(new Set());
+        }
+      } catch (error) {
+        console.error('Failed to load claimed rewards from storage', error);
+        setClaimHistory([]);
+        setClaimedIds(new Set());
+      }
+
+      const claimedMap = new Map<number, ClaimableReward>();
+      storedHistory.forEach((entry) => claimedMap.set(entry.marketId, entry));
+
       const count = await getMarketCount();
       const rewards: ClaimableReward[] = [];
       let totalAvailable = 0;
 
       for (let i = 1; i <= Number(count); i++) {
         const market = await getMarket(BigInt(i));
+        if (!market.exists) {
+          continue;
+        }
         const resolution = await getMarketResolution(BigInt(i));
         
         // Only process resolved markets
@@ -136,12 +161,44 @@ export default function ClaimPage() {
             yesPrice,
             noPrice,
           });
+        } else if (winning) {
+          if (!claimedMap.has(i)) {
+            const resolvedDate = resolution.expiryTimestamp > 0n
+              ? new Date(Number(resolution.expiryTimestamp) * 1000).toLocaleDateString(undefined, {
+                  year: 'numeric',
+                  month: 'short',
+                  day: 'numeric'
+                })
+              : new Date().toISOString().split('T')[0];
+
+            claimedMap.set(i, {
+              marketId: i,
+              question: market.question as string,
+              resolvedDate,
+              amount: claimedMap.get(i)?.amount ?? 0,
+              side,
+              winning: true,
+              yesBalance,
+              noBalance,
+              yesPrice,
+              noPrice,
+            });
+          }
         }
       }
 
       setClaimableRewards(rewards);
       setAvailableToClaim(totalAvailable);
-      setTotalClaimed(5200.50);
+      const historyList = Array.from(claimedMap.values());
+      setClaimHistory(historyList);
+      setClaimedIds(new Set(historyList.map((entry) => entry.marketId)));
+      try {
+        localStorage.setItem(CLAIMED_STORAGE_KEY, JSON.stringify(historyList));
+      } catch (error) {
+        console.error('Failed to persist claimed rewards', error);
+      }
+      // TODO: load total claimed from backend/subgraph
+      setTotalClaimed(prev => prev);
     } catch (error) {
       console.error('Error loading claimable rewards:', error);
     } finally {
@@ -150,15 +207,13 @@ export default function ClaimPage() {
   }, [address, isConnected, publicClient]);
 
   useEffect(() => {
-    loadClaimableRewards();
-  }, [loadClaimableRewards]);
+    const total = claimHistory.reduce((acc, reward) => acc + reward.amount, 0);
+    setTotalClaimed(total);
+  }, [claimHistory]);
 
   useEffect(() => {
-    if (isSuccess) {
-      setClaimingId(null);
-      loadClaimableRewards();
-    }
-  }, [isSuccess, loadClaimableRewards]);
+    loadClaimableRewards();
+  }, [loadClaimableRewards]);
 
   const handleClaim = async (reward: ClaimableReward) => {
     if (!address) {
@@ -169,46 +224,39 @@ export default function ClaimPage() {
     setClaimingId(reward.marketId);
 
     try {
-      const market = await getMarket(BigInt(reward.marketId));
-      const tokenAddress = reward.side === 'YES' 
-        ? market.yes as `0x${string}`
-        : market.no as `0x${string}`;
-      
-      const balance = reward.side === 'YES' ? reward.yesBalance : reward.noBalance;
-      const tokensIn = parseUnits(balance, 18);
-
-      // Check allowance for redemption (contract needs to burn tokens)
-      const allowance = await publicClient.readContract({
-        address: tokenAddress,
-        abi: positionTokenAbi,
-        functionName: 'allowance',
-        args: [address, addresses.core],
-      });
-
-      if (!allowance || (allowance as bigint) < tokensIn) {
-        const approvalAmount = tokensIn * BigInt(1000);
-        writeContract({
-          address: tokenAddress,
-          abi: positionTokenAbi,
-          functionName: 'approve',
-          args: [addresses.core, approvalAmount],
-        });
-        return;
-      }
-
-      // Use redeem function for 1:1 USDC redemption (prediction market standard)
-      // redeem(uint256 id, bool isYes, uint256 tokensIn)
-      writeContract({
+      const redeemHash = await writeContractAsync({
         address: addresses.core,
         abi: coreAbi,
         functionName: 'redeem',
-        args: [BigInt(reward.marketId), reward.side === 'YES', tokensIn],
+        args: [BigInt(reward.marketId), reward.side === 'YES'],
       });
+      await publicClient.waitForTransactionReceipt({ hash: redeemHash });
+
+      setClaimHistory((prev) => {
+        const filtered = prev.filter((r) => r.marketId !== reward.marketId);
+        const updated = [...filtered, reward];
+        try {
+          localStorage.setItem(CLAIMED_STORAGE_KEY, JSON.stringify(updated));
+        } catch (error) {
+          console.error('Failed to persist claimed rewards', error);
+        }
+        return updated;
+      });
+      setClaimedIds((prev) => {
+        const next = new Set(prev);
+        next.add(reward.marketId);
+        return next;
+      });
+      setTotalClaimed((prev) => prev + reward.amount);
+      loadClaimableRewards();
     } catch (error: any) {
       console.error('Error claiming reward:', error);
       setClaimingId(null);
       alert(`Failed to claim reward: ${error?.message || 'Unknown error'}`);
+      return;
     }
+
+    setClaimingId(null);
   };
 
   if (!isConnected) {
@@ -456,10 +504,14 @@ export default function ClaimPage() {
                           whileHover={{ scale: 1.05 }}
                           whileTap={{ scale: 0.95 }}
                           onClick={() => handleClaim(reward)}
-                          disabled={isPending || isConfirming || claimingId === reward.marketId}
+                          disabled={
+                            isPending ||
+                            claimingId === reward.marketId ||
+                            claimedIds.has(reward.marketId)
+                          }
                           className="px-4 sm:px-6 md:px-8 py-2 sm:py-3 md:py-4 bg-[#2DD4BF] hover:bg-[#14B8A6] text-white rounded-lg sm:rounded-xl font-bold hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed transition-all whitespace-nowrap shadow-md text-xs sm:text-sm md:text-base"
                         >
-                          {(isPending || isConfirming) && claimingId === reward.marketId ? (
+                          {claimingId === reward.marketId ? (
                             <span className="flex items-center gap-2">
                               <motion.div
                                 animate={{ rotate: 360 }}
@@ -468,6 +520,8 @@ export default function ClaimPage() {
                               />
                               Claiming...
                             </span>
+                          ) : claimedIds.has(reward.marketId) ? (
+                            'Claimed'
                           ) : (
                             'Claim Reward'
                           )}

@@ -15,7 +15,7 @@ import { formatUnits } from 'viem';
 interface Market {
   id: number;
   question: string;
-  status: 'active' | 'paused' | 'resolved';
+  status: 'active' | 'resolved';
   totalPairs: number;
 }
 
@@ -44,13 +44,15 @@ export default function AdminPage() {
       
       for (let i = 1; i <= Number(count); i++) {
         const market = await getMarket(BigInt(i));
-        const statusNames = ['active', 'paused', 'resolved'] as const;
-        
+        if (!market.exists) continue;
+
+        const statusNames = ['active', 'resolved'] as const;
+
         marketArray.push({
           id: i,
           question: market.question as string,
-          status: statusNames[Number(market.status)],
-          totalPairs: Number(formatUnits(market.totalPairs as bigint, 6)),
+          status: statusNames[Math.min(Number(market.status), 1)],
+          totalPairs: Number(formatUnits(market.totalPairsUSDC as bigint, 6)),
         });
       }
       
