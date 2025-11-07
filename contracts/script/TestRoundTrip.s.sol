@@ -66,7 +66,7 @@ contract TestRoundTrip is Script {
         uint256 expiry0;
         address creator0;
         uint16 feeBps0;
-        SpeculateCore.Status status0;
+        SpeculateCore.MarketStatus status0;
         bool yesWins0;
         (usdc0, yes, no, rY, rN, k0, vY0, vN0, usdcVault, totalPairs, feeUSDC0, question0, expiry0, creator0, feeBps0, status0, yesWins0) = core.markets(id);
         console.log("Initial reserves yes/no:", rY, rN);
@@ -104,7 +104,7 @@ contract TestRoundTrip is Script {
         uint256 expiry1;
         address creator1;
         uint16 feeBps1;
-        SpeculateCore.Status status1;
+        SpeculateCore.MarketStatus status1;
         bool yesWins1;
         (usdc1, yes1, no1, rY2, rN2, k1, vY1, vN1, usdcVault2, totalPairs2, feeUSDC1, question1, expiry1, creator1, feeBps1, status1, yesWins1) = core.markets(id);
         console.log("Post round-trip reserves yes/no:", rY2, rN2);

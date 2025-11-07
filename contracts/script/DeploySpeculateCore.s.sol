@@ -57,7 +57,8 @@ contract DeploySpeculateCore is Script {
         usdc.approve(address(core), initUsdc);
         console.log("Approved", initUsdc / 1e6, "USDC to core");
 
-        // Create test market
+        // Create test market (with manual resolution for now)
+        uint256 expiryTimestamp = block.timestamp + 30 days; // 30 days from now
         uint256 marketId = core.createMarket(
             "Will BTC be above $100,000 by Dec 31, 2025?",
             "BTC100K YES",
@@ -67,7 +68,13 @@ contract DeploySpeculateCore is Script {
             initReserveE18,
             feeBps,
             maxTradeBps,
-            initUsdc
+            initUsdc,
+            expiryTimestamp,
+            SpeculateCore.OracleType.None, // Manual resolution for test
+            address(0), // No oracle address
+            bytes32(0), // No price feed ID
+            0, // No target value
+            SpeculateCore.Comparison.Above // Not used for manual resolution
         );
 
         console.log("Test market created with ID:", marketId);

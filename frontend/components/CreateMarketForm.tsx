@@ -2,50 +2,76 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useAccount, useWriteContract, useWaitForTransactionReceipt, useReadContract } from 'wagmi';
-import { parseUnits } from 'viem';
+import {
+  useAccount,
+  useWriteContract,
+  useWaitForTransactionReceipt,
+  useReadContract,
+} from 'wagmi';
+import { parseUnits, keccak256, stringToBytes } from 'viem';
 import { addresses } from '@/lib/contracts';
 import { coreAbi, usdcAbi } from '@/lib/abis';
 
 interface CreateMarketFormProps {
-  standalone?: boolean; // If true, shows full page layout; if false, just the form
+  standalone?: boolean;
 }
 
-export default function CreateMarketForm({ standalone = false }: CreateMarketFormProps = { standalone: false }) {
+export default function CreateMarketForm({
+  standalone = false,
+}: CreateMarketFormProps = { standalone: false }) {
   const { address } = useAccount();
+
+  // Base state
   const [question, setQuestion] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Crypto');
   const [resolutionDate, setResolutionDate] = useState('');
-  const [initUsdc, setInitUsdc] = useState('5000');
-  
-  // Advanced fields (auto-generated but can be edited)
+
+  // Liquidity + reserve (auto-balance 0.5 USD/token)
+  const [initUsdc, setInitUsdc] = useState('1000');
+  const [initReserve, setInitReserve] = useState('2000');
+
+  // Chainlink
+  const [oracleType, setOracleType] = useState<'none' | 'chainlink'>('none');
+  const [priceFeedSymbol, setPriceFeedSymbol] = useState('BTC/USD');
+  const [targetValue, setTargetValue] = useState('');
+  const [comparison, setComparison] = useState<'above' | 'below' | 'equals'>(
+    'above'
+  );
+
+  // Tokens
   const [yesName, setYesName] = useState('');
   const [yesSymbol, setYesSymbol] = useState('');
   const [noName, setNoName] = useState('');
   const [noSymbol, setNoSymbol] = useState('');
-  const [initReserve, setInitReserve] = useState('1000');
-  const [feeBps, setFeeBps] = useState('200'); // Contract uses default split, but we keep this for compatibility
+  const [feeBps, setFeeBps] = useState('200');
   const [maxTradeBps, setMaxTradeBps] = useState('500');
   const [showAdvanced, setShowAdvanced] = useState(false);
-  
+
+  // Approvals
   const [needsApproval, setNeedsApproval] = useState(false);
   const [isApprovingState, setIsApprovingState] = useState(false);
-  
+
   const { data: hash, writeContract, isPending } = useWriteContract();
-  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
-  
-  const { data: approvalHash, writeContract: writeApprove, isPending: isApproving } = useWriteContract();
-  const { isLoading: isApprovalConfirming, isSuccess: isApprovalSuccess } = useWaitForTransactionReceipt({ hash: approvalHash });
-  
+  const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({
+    hash,
+  });
+
+  const {
+    data: approvalHash,
+    writeContract: writeApprove,
+    isPending: isApproving,
+  } = useWriteContract();
+  const { isLoading: isApprovalConfirming, isSuccess: isApprovalSuccess } =
+    useWaitForTransactionReceipt({ hash: approvalHash });
+
   const { data: currentAllowance } = useReadContract({
     address: addresses.usdc,
     abi: usdcAbi,
     functionName: 'allowance',
-    args: address && addresses.core ? [address, addresses.core] : undefined,
-    query: {
-      enabled: !!(address && addresses.usdc && addresses.core),
-    },
+    args:
+      address && addresses.core ? [address, addresses.core] : undefined,
+    query: { enabled: !!(address && addresses.usdc && addresses.core) },
   });
 
   const { data: usdcBalance } = useReadContract({
@@ -53,56 +79,39 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
     abi: usdcAbi,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
-    query: {
-      enabled: !!address,
-    },
+    query: { enabled: !!address },
   });
 
-  // Helper function to get market icon based on question
-  const getMarketIcon = (questionText: string) => {
-    const q = questionText.toLowerCase();
-    if (q.includes('btc') || q.includes('bitcoin')) return '₿';
-    if (q.includes('eth') || q.includes('ethereum')) return 'Ξ';
-    if (q.includes('sol') || q.includes('solana')) return '◎';
-    if (q.includes('xrp') || q.includes('ripple')) return '✕';
-    if (q.includes('doge') || q.includes('dogecoin')) return '🐕';
-    if (q.includes('bnb')) return '🔷';
-    if (q.includes('polygon') || q.includes('matic')) return '⬟';
-    if (q.includes('1inch')) return '1';
-    if (q.includes('politics') || q.includes('election') || q.includes('president')) return '🏛️';
-    if (q.includes('sports') || q.includes('football') || q.includes('soccer') || q.includes('basketball')) return '⚽';
-    if (q.includes('tech') || q.includes('technology') || q.includes('ai') || q.includes('artificial intelligence')) return '💻';
-    if (q.includes('finance') || q.includes('stock') || q.includes('market')) return '📈';
-    return '💵';
-  };
+  // Auto-balance 2x reserve
+  useEffect(() => {
+    const usdcNum = parseFloat(initUsdc || '0');
+    if (!isNaN(usdcNum) && usdcNum > 0) {
+      setInitReserve((usdcNum * 2).toFixed(2));
+    }
+  }, [initUsdc]);
 
-  // Auto-generate token names and symbols from question
+  // Auto token names
   useEffect(() => {
     if (question) {
-      // Generate a short identifier from the question
       const shortId = question
         .replace(/[^a-zA-Z0-9]/g, '')
         .substring(0, 20)
         .toUpperCase();
-      
-      if (!yesName || yesName === '') {
-        setYesName(`${shortId} YES`);
-      }
-      if (!yesSymbol || yesSymbol === '') {
-        setYesSymbol(`${shortId.substring(0, 10)}-YES`);
-      }
-      if (!noName || noName === '') {
-        setNoName(`${shortId} NO`);
-      }
-      if (!noSymbol || noSymbol === '') {
-        setNoSymbol(`${shortId.substring(0, 10)}-NO`);
-      }
+      if (!yesName) setYesName(`${shortId} YES`);
+      if (!yesSymbol) setYesSymbol(`${shortId.substring(0, 10)}-YES`);
+      if (!noName) setNoName(`${shortId} NO`);
+      if (!noSymbol) setNoSymbol(`${shortId.substring(0, 10)}-NO`);
     }
-  }, [question, yesName, yesSymbol, noName, noSymbol]);
+  }, [question]);
 
-  // Check approval status
+  // Allowance check
   useEffect(() => {
-    if (address && addresses.core && currentAllowance !== undefined && currentAllowance !== null) {
+    if (
+      address &&
+      addresses.core &&
+      currentAllowance !== undefined &&
+      currentAllowance !== null
+    ) {
       const requiredAmount = parseUnits(initUsdc || '0', 6);
       setNeedsApproval((currentAllowance as bigint) < requiredAmount);
     } else {
@@ -113,43 +122,29 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
   // Reset form on success
   useEffect(() => {
     if (isSuccess && !isApprovingState) {
-      setQuestion('');
-      setDescription('');
-      setCategory('Crypto');
-      setResolutionDate('');
-      setInitUsdc('5000');
-      setYesName('');
-      setYesSymbol('');
-      setNoName('');
-      setNoSymbol('');
-      setInitReserve('1000');
-      setFeeBps('200');
-      setMaxTradeBps('500');
-      alert('Market created successfully!');
+      alert('✅ Market created successfully!');
       window.location.reload();
     }
   }, [isSuccess, isApprovingState]);
 
+  // Approve
   const handleApprove = async () => {
     if (!address || !addresses.core) return;
-    
     setIsApprovingState(true);
     try {
-      const amount = parseUnits(initUsdc || '5000', 6);
+      const amount = parseUnits(initUsdc || '1000', 6);
       writeApprove({
         address: addresses.usdc,
         abi: usdcAbi,
         functionName: 'approve',
         args: [addresses.core, amount],
       });
-    } catch (error: any) {
-      console.error('Error approving USDC:', error);
-      alert(`Failed to approve USDC: ${error?.message || 'Unknown error'}`);
+    } catch (err: any) {
+      alert(`Approval failed: ${err.message || 'Unknown error'}`);
       setIsApprovingState(false);
     }
   };
 
-  // Reset approval state when transaction succeeds
   useEffect(() => {
     if (isApprovalSuccess) {
       setIsApprovingState(false);
@@ -157,69 +152,33 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
     }
   }, [isApprovalSuccess]);
 
+  // Submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!question || !yesName || !yesSymbol || !noName || !noSymbol || !initReserve || !feeBps || !maxTradeBps || !initUsdc) {
-      alert('Please fill in all required fields');
-      return;
-    }
 
-    if (!address) {
-      alert('Please connect your wallet');
-      return;
-    }
+    if (!address) return alert('Please connect your wallet');
+    if (!question) return alert('Enter question');
+    if (!resolutionDate) return alert('Select resolution date');
+    if (needsApproval) return alert('Approve USDC first');
 
-    // Validate fee (0% to 10%)
     const fee = parseInt(feeBps);
-    if (fee < 0 || fee > 1000) {
-      alert('Fee must be between 0 and 1000 (0% to 10%) basis points');
-      return;
-    }
-
-    // Validate max trade (0.1% to 100%)
     const maxTrade = parseInt(maxTradeBps);
-    if (maxTrade < 10 || maxTrade > 10000) {
-      alert('Max trade must be between 10 (0.1%) and 10000 (100%) basis points');
-      return;
-    }
-
-    // Validate initial USDC (minimum 1 USDC)
-    const initUsdcAmount = parseFloat(initUsdc);
-    if (initUsdcAmount < 1) {
-      alert('Initial USDC must be at least 1 USDC');
-      return;
-    }
-
-    // Validate initial reserve (minimum 1e18)
-    const initReserveAmount = parseFloat(initReserve);
-    if (initReserveAmount < 1) {
-      alert('Initial reserve must be at least 1 token');
-      return;
-    }
-
-    if (needsApproval) {
-      alert('Please approve USDC first');
-      return;
-    }
+    const initReserveE18 = parseUnits(initReserve, 18);
+    const initUsdcE6 = parseUnits(initUsdc, 6);
+    const expiry = Math.floor(new Date(resolutionDate).getTime() / 1000);
+    const oracleEnum = oracleType === 'none' ? 0 : 1;
+    const comparisonEnum =
+      comparison === 'above' ? 0 : comparison === 'below' ? 1 : 2;
+    const targetValueBigInt =
+      oracleType === 'chainlink' && targetValue
+        ? parseUnits(targetValue, 8)
+        : 0n;
+    const priceFeedId =
+      oracleType === 'chainlink'
+        ? (keccak256(stringToBytes(priceFeedSymbol)) as `0x${string}`)
+        : ('0x' + '0'.repeat(64)) as `0x${string}`;
 
     try {
-      const initReserveE18 = parseUnits(initReserve, 18);
-      const initUsdcE6 = parseUnits(initUsdc, 6);
-
-      console.log('Creating market:', {
-        coreAddress: addresses.core,
-        question,
-        yesName,
-        yesSymbol,
-        noName,
-        noSymbol,
-        initReserveE18: initReserveE18.toString(),
-        feeBps: fee,
-        maxTradeBps: maxTrade,
-        initUsdc: initUsdcE6.toString(),
-      });
-
       writeContract({
         address: addresses.core,
         abi: coreAbi,
@@ -231,421 +190,274 @@ export default function CreateMarketForm({ standalone = false }: CreateMarketFor
           noName,
           noSymbol,
           initReserveE18,
-          fee as number,
-          maxTrade as number,
+          fee,
+          maxTrade,
           initUsdcE6,
+          BigInt(expiry),
+          oracleEnum,
+          '0x0000000000000000000000000000000000000000',
+          priceFeedId,
+          targetValueBigInt,
+          comparisonEnum,
         ],
       });
-    } catch (error: any) {
-      console.error('Error creating market:', error);
-      let errorMessage = error?.message || error?.toString() || 'Unknown error';
-      
-      // Check for common error patterns
-      if (errorMessage.includes('execution reverted') || errorMessage.includes('transfer')) {
-        if (needsApproval) {
-          errorMessage = 'Transaction failed: USDC approval required. Please approve USDC first.';
-        } else if (usdcBalance !== undefined && (Number(usdcBalance) / 1e6) < parseFloat(initUsdc)) {
-          errorMessage = `Transaction failed: Insufficient USDC balance. You have ${(Number(usdcBalance) / 1e6).toFixed(2)} USDC but need ${initUsdc} USDC.`;
-        } else {
-          errorMessage = 'Transaction failed: Please check your USDC balance and approval. Make sure you have approved the contract to spend enough USDC.';
-        }
-      }
-      
-      alert(`Failed to create market: ${errorMessage}`);
+    } catch (err: any) {
+      alert(`Failed: ${err.message || 'Unknown error'}`);
     }
   };
 
+  // Form UI
   const formContent = (
-    <form onSubmit={handleSubmit} className="space-y-5 sm:space-y-6">
-                {/* Market Question */}
-                <div>
-                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
-                    Market Question
-                  </label>
-                  <input
-                    type="text"
-                    value={question}
-                    onChange={(e) => setQuestion(e.target.value)}
-                    placeholder="e.g., Will BTC reach $150k by 2026?"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white"
-                    required
-                  />
-                  <p className="mt-1.5 text-xs text-gray-500">Make it clear and specific. This cannot be changed later.</p>
-                </div>
+    <form onSubmit={handleSubmit} className="space-y-6">
+      {/* Market Question */}
+      <div>
+        <label className="font-bold block mb-2">Market Question *</label>
+        <input
+          value={question}
+          onChange={(e) => setQuestion(e.target.value)}
+          placeholder="e.g. Will BTC reach $100K by 2026?"
+          className="w-full border rounded-lg px-4 py-3"
+          required
+        />
+      </div>
 
-                {/* Description */}
-                <div>
-                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
-                    Description
-                  </label>
-                  <textarea
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Provide additional context or resolution criteria..."
-                    rows={4}
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white resize-none"
-                  />
-                </div>
+      {/* Description */}
+      <div>
+        <label className="font-bold block mb-2">Description</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="Add details or criteria..."
+          className="w-full border rounded-lg px-4 py-3"
+        />
+      </div>
 
-                {/* Category */}
-                <div>
-                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
-                    Category
-                  </label>
-                  <input
-                    type="text"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                    placeholder="Crypto"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white"
-                  />
-                </div>
+      {/* Category */}
+      <div>
+        <label className="font-bold block mb-2">Category</label>
+        <input
+          value={category}
+          onChange={(e) => setCategory(e.target.value)}
+          placeholder="Crypto"
+          className="w-full border rounded-lg px-4 py-3"
+        />
+      </div>
 
-                {/* Resolution Date */}
-                <div>
-                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
-                    Resolution Date
-                  </label>
-                  <div className="relative">
-                    <input
-                      type="datetime-local"
-                      value={resolutionDate}
-                      onChange={(e) => setResolutionDate(e.target.value)}
-                      min={new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 16)}
-                      className="w-full rounded-lg border border-gray-300 px-4 py-3 pr-12 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white"
-                    />
-                    <svg className="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400 pointer-events-none" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                    </svg>
-                  </div>
-                  <p className="mt-1.5 text-xs text-gray-500">When will this market resolve? Minimum 7 days from now.</p>
-                </div>
+      {/* Resolution Date */}
+      <div>
+        <label className="font-bold block mb-2">Resolution Date *</label>
+        <input
+          type="datetime-local"
+          value={resolutionDate}
+          onChange={(e) => setResolutionDate(e.target.value)}
+          className="w-full border rounded-lg px-4 py-3"
+          required
+        />
+      </div>
 
-                {/* Initial Liquidity */}
-                <div>
-                  <label className="block text-sm sm:text-base font-bold text-gray-900 mb-2">
-                    Initial Liquidity (USDC)
-                  </label>
-                  <input
-                    type="number"
-                    value={initUsdc}
-                    onChange={(e) => setInitUsdc(e.target.value)}
-                    placeholder="e.g., 5000"
-                    min="1"
-                    step="1"
-                    className="w-full rounded-lg border border-gray-300 px-4 py-3 text-sm sm:text-base focus:outline-none focus:ring-2 focus:ring-[#2DD4BF] focus:border-[#2DD4BF] bg-white"
-                    required
-                  />
-                </div>
+      {/* Resolution Type */}
+      <div>
+        <label className="font-bold block mb-2">Resolution Type *</label>
+        <div className="flex flex-col gap-2">
+          <label className="flex items-center gap-3">
+            <input
+              type="radio"
+              name="oracleType"
+              value="none"
+              checked={oracleType === 'none'}
+              onChange={() => setOracleType('none')}
+            />
+            Manual Resolution
+          </label>
+          <label className="flex items-center gap-3">
+            <input
+              type="radio"
+              name="oracleType"
+              value="chainlink"
+              checked={oracleType === 'chainlink'}
+              onChange={() => setOracleType('chainlink')}
+            />
+            Chainlink Auto-Resolution
+          </label>
+        </div>
+      </div>
 
-                {/* Advanced Options Toggle */}
-                <div>
-                  <button
-                    type="button"
-                    onClick={() => setShowAdvanced(!showAdvanced)}
-                    className="text-sm text-[#14B8A6] hover:text-[#0D9488] font-medium"
-                  >
-                    {showAdvanced ? '▼ Hide' : '▶ Show'} Advanced Options
-                  </button>
-                </div>
+      {/* Chainlink Config */}
+      {oracleType === 'chainlink' && (
+        <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg space-y-4">
+          <h3 className="font-semibold text-gray-900">
+            Chainlink Configuration
+          </h3>
+          <div>
+            <label className="block mb-1">Price Feed Symbol *</label>
+            <select
+              value={priceFeedSymbol}
+              onChange={(e) => setPriceFeedSymbol(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2"
+            >
+              <option value="BTC/USD">BTC/USD</option>
+              <option value="ETH/USD">ETH/USD</option>
+              <option value="BNB/USD">BNB/USD</option>
+            </select>
+          </div>
 
-                {/* Advanced Options */}
-                {showAdvanced && (
-                  <div className="space-y-4 p-4 bg-gray-50 rounded-lg border border-gray-200">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          YES Token Name
-                        </label>
-                        <input
-                          type="text"
-                          value={yesName}
-                          onChange={(e) => setYesName(e.target.value)}
-                          placeholder="BTC100K YES"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          YES Token Symbol
-                        </label>
-                        <input
-                          type="text"
-                          value={yesSymbol}
-                          onChange={(e) => setYesSymbol(e.target.value)}
-                          placeholder="BTC100K-YES"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          NO Token Name
-                        </label>
-                        <input
-                          type="text"
-                          value={noName}
-                          onChange={(e) => setNoName(e.target.value)}
-                          placeholder="BTC100K NO"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          required
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          NO Token Symbol
-                        </label>
-                        <input
-                          type="text"
-                          value={noSymbol}
-                          onChange={(e) => setNoSymbol(e.target.value)}
-                          placeholder="BTC100K-NO"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          required
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Initial Reserve (tokens)
-                        </label>
-                        <input
-                          type="number"
-                          value={initReserve}
-                          onChange={(e) => setInitReserve(e.target.value)}
-                          min="1"
-                          step="1"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          placeholder="1000"
-                          required
-                        />
-                        <p className="mt-1 text-xs text-gray-500">Tokens per side (e.g., 1000 = 1000e18)</p>
-                      </div>
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-2">
-                          Max Trade (basis points)
-                        </label>
-                        <input
-                          type="number"
-                          value={maxTradeBps}
-                          onChange={(e) => setMaxTradeBps(e.target.value)}
-                          min="10"
-                          max="10000"
-                          step="10"
-                          className="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm"
-                          placeholder="500"
-                          required
-                        />
-                        <p className="mt-1 text-xs text-gray-500">
-                          {maxTradeBps ? `${(parseInt(maxTradeBps) / 100).toFixed(2)}%` : '0%'} of pool per trade
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                )}
-
-                {/* USDC Balance Warning */}
-                {usdcBalance !== undefined && parseFloat(initUsdc) > 0 && (
-                  (Number(usdcBalance) / 1e6) < parseFloat(initUsdc) && (
-                    <div className="p-4 bg-orange-50 rounded-lg border border-orange-200">
-                      <div className="flex items-start gap-3">
-                        <svg className="w-5 h-5 text-orange-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                        </svg>
-                        <div className="flex-1">
-                          <p className="text-sm font-semibold text-orange-900 mb-1">
-                            Insufficient USDC Balance
-                          </p>
-                          <p className="text-sm text-orange-800">
-                            You have {(Number(usdcBalance) / 1e6).toFixed(2)} USDC, but need {initUsdc} USDC to create this market.
-                          </p>
-                        </div>
-                      </div>
-                    </div>
-                  )
-                )}
-
-                {/* Approval Notice */}
-                {needsApproval && (
-                  <div className="p-4 bg-red-50 rounded-lg border border-red-200">
-                    <div className="flex items-start gap-3 mb-3">
-                      <svg className="w-5 h-5 text-red-600 mt-0.5 flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                      </svg>
-                      <div className="flex-1">
-                        <p className="text-sm font-semibold text-red-900 mb-1">
-                          USDC Approval Required
-                        </p>
-                        <p className="text-sm text-red-800 mb-2">
-                          Before creating a market, you must approve the contract to spend {initUsdc} USDC. This is required because the contract needs to transfer your USDC to bootstrap the market liquidity.
-                        </p>
-                        <p className="text-xs text-red-700 mt-2">
-                          Current allowance: {currentAllowance ? (Number(currentAllowance) / 1e6).toFixed(2) : '0'} USDC | Required: {initUsdc} USDC
-                        </p>
-                        <p className="text-xs text-red-600 mt-1 font-semibold">
-                          ⚠️ Transaction will fail without approval!
-                        </p>
-                      </div>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={handleApprove}
-                      disabled={isApproving || isApprovalConfirming || isPending || isConfirming}
-                      className="w-full rounded-lg bg-red-600 px-4 py-3 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition-colors"
-                    >
-                      {(isApproving || isApprovalConfirming) ? 'Approving...' : `Approve ${initUsdc} USDC`}
-                    </button>
-                  </div>
-                )}
-
-                {/* Create Market Button */}
-                <button
-                  type="submit"
-                  disabled={isPending || isConfirming || !address || needsApproval}
-                  className="w-full rounded-lg bg-[#2DD4BF] hover:bg-[#14B8A6] px-6 py-3 sm:py-4 text-sm sm:text-base font-semibold text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2 shadow-md hover:shadow-lg"
-                >
-                  {(isPending || isConfirming) ? (
-                    <>
-                      <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
-                      <span>Creating Market...</span>
-                    </>
-                  ) : (
-                    <>
-                      <svg className="w-4 h-4 sm:w-5 sm:h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M12 4v16m8-8H4" />
-                      </svg>
-                      <span>Create Market</span>
-                    </>
-                  )}
-                </button>
-    </form>
-  );
-
-  const sidebarContent = (
-    <div className="bg-green-50 rounded-xl p-6 shadow-lg border border-green-200 sticky top-4">
-              {/* How It Works */}
-              <div className="mb-8">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">How It Works</h3>
-                <ol className="space-y-4">
-                  <li className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-8 h-8 bg-[#14B8A6] text-white rounded-full flex items-center justify-center text-sm font-bold">
-                      1
-                    </span>
-                    <div>
-                      <p className="font-medium text-gray-900">Set Terms</p>
-                      <p className="text-sm text-gray-600">Define your market question and resolution date.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-8 h-8 bg-[#14B8A6] text-white rounded-full flex items-center justify-center text-sm font-bold">
-                      2
-                    </span>
-                    <div>
-                      <p className="font-medium text-gray-900">Add Liquidity</p>
-                      <p className="text-sm text-gray-600">Provide initial liquidity to bootstrap trading.</p>
-                    </div>
-                  </li>
-                  <li className="flex items-start gap-3">
-                    <span className="flex-shrink-0 w-8 h-8 bg-[#14B8A6] text-white rounded-full flex items-center justify-center text-sm font-bold">
-                      3
-                    </span>
-                    <div>
-                      <p className="font-medium text-gray-900">Earn Fees</p>
-                      <p className="text-sm text-gray-600">Collect 0.5% of all trading volume on your market.</p>
-                    </div>
-                  </li>
-                </ol>
-              </div>
-
-              {/* Pro Tips */}
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                  <svg className="w-5 h-5 text-[#14B8A6]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Pro Tips
-                </h3>
-                <ul className="space-y-3 text-sm text-gray-700">
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#14B8A6] mt-1">•</span>
-                    <span>Use clear, unambiguous market questions</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#14B8A6] mt-1">•</span>
-                    <span>Set realistic resolution criteria</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#14B8A6] mt-1">•</span>
-                    <span>Higher liquidity attracts more traders</span>
-                  </li>
-                  <li className="flex items-start gap-2">
-                    <span className="text-[#14B8A6] mt-1">•</span>
-                    <span>Markets resolve in 24-48 hours</span>
-                  </li>
-                </ul>
-              </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block mb-1">Target Value *</label>
+              <input
+                type="number"
+                value={targetValue}
+                onChange={(e) => setTargetValue(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2"
+              />
             </div>
+            <div>
+              <label className="block mb-1">Comparison *</label>
+              <select
+                value={comparison}
+                onChange={(e) =>
+                  setComparison(e.target.value as 'above' | 'below' | 'equals')
+                }
+                className="w-full border rounded-lg px-3 py-2"
+              >
+                <option value="above">Above</option>
+                <option value="below">Below</option>
+                <option value="equals">Equals</option>
+              </select>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Initial Liquidity */}
+      <div>
+        <label className="font-bold block mb-2">
+          Initial Liquidity (USDC)
+        </label>
+        <input
+          type="number"
+          value={initUsdc}
+          onChange={(e) => setInitUsdc(e.target.value)}
+          className="w-full border rounded-lg px-4 py-3"
+          required
+        />
+        <p className="text-xs text-gray-600 mt-1">
+          Reserve auto-adjusts (2× USDC = {initReserve} tokens → 0.5 USDC/token)
+        </p>
+      </div>
+
+      {/* Advanced */}
+      <div>
+        <button
+          type="button"
+          onClick={() => setShowAdvanced(!showAdvanced)}
+          className="text-teal-600 text-sm font-medium"
+        >
+          {showAdvanced ? '▼ Hide Advanced Options' : '▶ Show Advanced Options'}
+        </button>
+      </div>
+
+      {showAdvanced && (
+        <div className="p-4 bg-gray-50 rounded-lg border space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label>YES Token Name</label>
+              <input
+                value={yesName}
+                onChange={(e) => setYesName(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label>YES Token Symbol</label>
+              <input
+                value={yesSymbol}
+                onChange={(e) => setYesSymbol(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label>NO Token Name</label>
+              <input
+                value={noName}
+                onChange={(e) => setNoName(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+            <div>
+              <label>NO Token Symbol</label>
+              <input
+                value={noSymbol}
+                onChange={(e) => setNoSymbol(e.target.value)}
+                className="w-full border rounded-lg px-3 py-2 text-sm"
+              />
+            </div>
+          </div>
+          <div>
+            <label>Initial Reserve (tokens)</label>
+            <input
+              type="number"
+              value={initReserve}
+              onChange={(e) => setInitReserve(e.target.value)}
+              className="w-full border rounded-lg px-3 py-2 text-sm"
+            />
+            <p className="text-xs text-gray-500">
+              Auto-linked to liquidity (2× USDC = 0.5 USDC/token)
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* Approve */}
+      {needsApproval && (
+        <div className="p-4 bg-red-50 border rounded-lg">
+          <p className="text-red-800 font-semibold mb-2">
+            Approval Required
+          </p>
+          <button
+            type="button"
+            onClick={handleApprove}
+            disabled={isApproving || isApprovalConfirming}
+            className="w-full bg-red-600 hover:bg-red-500 text-white rounded-lg py-3 font-semibold disabled:opacity-50"
+          >
+            {isApproving || isApprovalConfirming
+              ? 'Approving...'
+              : 'Approve USDC'}
+          </button>
+        </div>
+      )}
+
+      {/* Submit */}
+      <button
+        type="submit"
+        disabled={isPending || isConfirming || needsApproval}
+        className="w-full bg-teal-500 hover:bg-teal-600 text-white rounded-lg py-3 font-semibold disabled:opacity-50"
+      >
+        {isPending || isConfirming ? 'Creating...' : 'Create Market'}
+      </button>
+    </form>
   );
 
   if (standalone) {
     return (
-      <div className="min-h-screen bg-[#FAF9FF]">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-          {/* Back Link */}
-          <Link href="/" className="inline-flex items-center text-[#14B8A6] hover:text-[#0D9488] mb-6">
-            <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-            </svg>
-            Back to Home
+      <div className="min-h-screen bg-gray-50 py-10">
+        <div className="max-w-4xl mx-auto px-4">
+          <Link
+            href="/"
+            className="text-teal-600 hover:text-teal-500 font-medium mb-6 inline-block"
+          >
+            ← Back to Home
           </Link>
-
-          {/* Page Title */}
-          <div className="mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">Create Your Market</h1>
-            <p className="text-lg text-gray-600 max-w-2xl">
-              Launch a new prediction market on any outcome. Set the terms, attract liquidity providers, and earn fees from your market.
-            </p>
-          </div>
-
-          {/* Main Content Grid */}
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-            {/* Left Column - Form */}
-            <div className="lg:col-span-2">
-              <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-lg border border-gray-200">
-                {formContent}
-              </div>
-            </div>
-
-            {/* Right Column - Sidebar */}
-            <div className="lg:col-span-1">
-              {sidebarContent}
-            </div>
+          <div className="bg-white p-8 rounded-xl shadow border">
+            <h1 className="text-3xl font-bold mb-6">Create Market</h1>
+            {formContent}
           </div>
         </div>
       </div>
     );
   }
 
-  // Embedded version (for admin page)
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-      {/* Left Column - Form */}
-      <div className="lg:col-span-2">
-        <div className="bg-white rounded-xl sm:rounded-2xl p-4 sm:p-6 md:p-8 shadow-lg border border-gray-200">
-          {formContent}
-        </div>
-      </div>
-
-      {/* Right Column - Sidebar */}
-      <div className="lg:col-span-1">
-        {sidebarContent}
-      </div>
-    </div>
-  );
+  return <div className="bg-white p-6 rounded-lg shadow">{formContent}</div>;
 }

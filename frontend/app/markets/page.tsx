@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SearchIcon, SlidersHorizontalIcon } from 'lucide-react';
 import Header from '@/components/Header';
 import { Badge, Button, Card, CardContent, Input } from '@/components/ui';
-import { getMarketCount, getMarket, getPriceYes, getPriceNo } from '@/lib/hooks';
+import { getMarketCount, getMarket, getPriceYes, getPriceNo, getMarketResolution } from '@/lib/hooks';
 import { formatUnits } from 'viem';
 import { useReadContract } from 'wagmi';
 import { addresses } from '@/lib/contracts';
@@ -25,6 +25,118 @@ const formatPriceInCents = (price: number): string => {
   return `${formatted}¢`;
 };
 
+// Helper function to format time remaining until expiry
+const formatTimeRemaining = (expiryTimestamp: bigint): string => {
+  if (expiryTimestamp === 0n) return 'N/A';
+  
+  const now = Math.floor(Date.now() / 1000);
+  const expiry = Number(expiryTimestamp);
+  const secondsRemaining = expiry - now;
+  
+  if (secondsRemaining <= 0) return 'Expired';
+  
+  const days = Math.floor(secondsRemaining / 86400);
+  const hours = Math.floor((secondsRemaining % 86400) / 3600);
+  const minutes = Math.floor((secondsRemaining % 3600) / 60);
+  
+  if (days > 0) {
+    return `${days}D ${hours}H`;
+  } else if (hours > 0) {
+    return `${hours}H ${minutes}M`;
+  } else {
+    return `${minutes}M`;
+  }
+};
+
+// Helper function to format total duration (from creation to expiry)
+const formatDuration = (expiryTimestamp: bigint): string => {
+  if (expiryTimestamp === 0n) return 'N/A';
+  
+  // For now, we'll calculate from current time as we don't have creation timestamp
+  // This will be approximate but better than random numbers
+  const now = Math.floor(Date.now() / 1000);
+  const expiry = Number(expiryTimestamp);
+  const totalSeconds = expiry - now;
+  
+  if (totalSeconds <= 0) return 'Expired';
+  
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  
+  if (days > 0) {
+    return `${days}D ${hours}H`;
+  } else {
+    return `${hours}H`;
+  }
+};
+
+// Helper function to get resolution type label
+const getResolutionTypeLabel = (oracleType: number): string => {
+  switch (oracleType) {
+    case 0:
+      return 'Manual';
+    case 1:
+      return 'Chainlink Auto';
+    case 2:
+      return 'Chainlink Functions';
+    default:
+      return 'Manual';
+  }
+};
+
+// Real-time countdown component for each market
+function MarketCountdown({ expiryTimestamp }: { expiryTimestamp: bigint }) {
+  const [timeRemaining, setTimeRemaining] = useState<string>('');
+  
+  useEffect(() => {
+    if (expiryTimestamp === 0n) {
+      setTimeRemaining('N/A');
+      return;
+    }
+    
+    const updateCountdown = () => {
+      const now = Math.floor(Date.now() / 1000);
+      const expiry = Number(expiryTimestamp);
+      const secondsRemaining = expiry - now;
+      
+      if (secondsRemaining <= 0) {
+        setTimeRemaining('Expired');
+        return;
+      }
+      
+      const days = Math.floor(secondsRemaining / 86400);
+      const hours = Math.floor((secondsRemaining % 86400) / 3600);
+      const minutes = Math.floor((secondsRemaining % 3600) / 60);
+      
+      if (days > 0) {
+        setTimeRemaining(`${days}D ${hours}H`);
+      } else if (hours > 0) {
+        setTimeRemaining(`${hours}H ${minutes}M`);
+      } else {
+        setTimeRemaining(`${minutes}M`);
+      }
+    };
+    
+    updateCountdown();
+    const interval = setInterval(updateCountdown, 60000); // Update every minute
+    
+    return () => clearInterval(interval);
+  }, [expiryTimestamp]);
+  
+  return (
+    <div className="flex items-center justify-between">
+      <span className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Time Remaining</span>
+      <span className={`text-sm sm:text-base font-bold ${
+        timeRemaining === 'Expired' 
+          ? 'text-red-600' 
+          : 'text-gray-900'
+      }`}>
+        {timeRemaining || formatTimeRemaining(expiryTimestamp)}
+      </span>
+    </div>
+  );
+}
+
 interface MarketCard {
   id: number;
   question: string;
@@ -33,8 +145,12 @@ interface MarketCard {
   volume: number;
   yesPercent: number;
   noPercent: number;
-  status: 'LIVE TRADING' | 'FUNDING' | 'RESOLVED';
+  status: 'LIVE TRADING' | 'FUNDING' | 'RESOLVED' | 'EXPIRED';
   totalPairsUSDC: bigint;
+  expiryTimestamp: bigint;
+  oracleType: number; // 0 = None, 1 = ChainlinkFeed, 2 = ChainlinkFunctions
+  isResolved: boolean;
+  yesWins?: boolean;
 }
 
 export default function MarketsPage() {
@@ -56,6 +172,13 @@ export default function MarketsPage() {
 
   useEffect(() => {
     loadMarkets();
+    
+    // Refresh markets every 30 seconds to update countdown timers
+    const interval = setInterval(() => {
+      loadMarkets();
+    }, 30000);
+    
+    return () => clearInterval(interval);
   }, []);
 
   const loadMarkets = async () => {
@@ -64,19 +187,43 @@ export default function MarketsPage() {
       const countNum = Number(count);
       setMarketCount(countNum);
       
-      const marketArray: MarketCard[] = [];
+      // Create array of market IDs
+      const marketIds = Array.from({ length: countNum }, (_, i) => i + 1);
       
-      for (let i = 1; i <= countNum; i++) {
+      // Load all markets in parallel
+      const marketPromises = marketIds.map(async (i) => {
         try {
-          const market = await getMarket(BigInt(i));
-          if (!market.exists) continue;
+          // Parallelize the calls for each market (market data, prices, and resolution)
+          const [market, priceYes, priceNo, resolution] = await Promise.all([
+            getMarket(BigInt(i)),
+            getPriceYes(BigInt(i)),
+            getPriceNo(BigInt(i)),
+            getMarketResolution(BigInt(i)),
+          ]);
           
-          const priceYes = parseFloat(await getPriceYes(BigInt(i)));
-          const priceNo = parseFloat(await getPriceNo(BigInt(i)));
+          if (!market.exists) return null;
           
           const totalPairs = Number(formatUnits(market.totalPairsUSDC as bigint, 6));
           const statusNum = Number(market.status);
-          const status = statusNum === 0 ? 'LIVE TRADING' : statusNum === 1 ? 'FUNDING' : 'RESOLVED';
+          
+          // Determine status based on resolution and expiry
+          const now = Math.floor(Date.now() / 1000);
+          const expiryTimestamp = resolution.expiryTimestamp || 0n;
+          const isExpired = expiryTimestamp > 0n && Number(expiryTimestamp) < now;
+          
+          let status: 'LIVE TRADING' | 'FUNDING' | 'RESOLVED' | 'EXPIRED' = 'LIVE TRADING';
+          if (resolution.isResolved) {
+            status = 'RESOLVED';
+          } else if (isExpired) {
+            // Market has expired but not yet resolved
+            status = 'EXPIRED';
+          } else if (statusNum === 1) {
+            status = 'FUNDING';
+          } else if (statusNum === 0) {
+            status = 'LIVE TRADING';
+          } else {
+            status = 'RESOLVED';
+          }
           
           const reserveYes = Number(formatUnits(market.reserveYes as bigint, 18));
           const reserveNo = Number(formatUnits(market.reserveNo as bigint, 18));
@@ -89,21 +236,30 @@ export default function MarketsPage() {
             noPercent = Math.round((reserveNo / totalReserve) * 100);
           }
           
-          marketArray.push({
+          return {
             id: i,
             question: market.question as string,
-            yesPrice: priceYes,
-            noPrice: priceNo,
+            yesPrice: parseFloat(priceYes),
+            noPrice: parseFloat(priceNo),
             volume: totalPairs,
             yesPercent,
             noPercent,
             status,
             totalPairsUSDC: market.totalPairsUSDC as bigint,
-          });
+            expiryTimestamp: resolution.expiryTimestamp || 0n,
+            oracleType: resolution.oracleType || 0,
+            isResolved: resolution.isResolved || false,
+            yesWins: resolution.yesWins,
+          } as MarketCard;
         } catch (error) {
           console.error(`Error loading market ${i}:`, error);
+          return null;
         }
-      }
+      });
+      
+      // Wait for all markets to load and filter out nulls
+      const marketResults = await Promise.all(marketPromises);
+      const marketArray = marketResults.filter((market): market is MarketCard => market !== null);
       
       setMarkets(marketArray);
     } catch (error) {
@@ -135,7 +291,7 @@ export default function MarketsPage() {
   });
 
   const totalVolume = coreUsdcBalance && typeof coreUsdcBalance === 'bigint' ? parseFloat(formatUnits(coreUsdcBalance, 6)) : 0;
-  const liveMarkets = markets.filter(m => m.status === 'LIVE TRADING').length;
+  const liveMarkets = markets.filter(m => m.status === 'LIVE TRADING' || m.status === 'FUNDING').length;
   
   // Fetch unique traders count from subgraph
   const { data: activeTraders = 0 } = useQuery({
@@ -153,17 +309,26 @@ export default function MarketsPage() {
 
   const categories = ['All', 'Crypto', 'Bitcoin', 'Ethereum', 'Politics', 'Sports', 'Tech', 'Finance'];
 
-  const getMarketIcon = (question: string) => {
+  const getMarketLogo = (question: string): string => {
     const q = question.toLowerCase();
-    if (q.includes('btc') || q.includes('bitcoin')) return '₿';
-    if (q.includes('eth') || q.includes('ethereum')) return 'Ξ';
-    if (q.includes('sol')) return '◎';
-    if (q.includes('xrp') || q.includes('ripple')) return '✕';
-    if (q.includes('doge')) return '🐕';
-    if (q.includes('bnb')) return '🔷';
-    if (q.includes('polygon') || q.includes('matic')) return '⬟';
-    if (q.includes('1inch')) return '1';
-    return '💵';
+    // More specific matches first to avoid false positives
+    if (q.includes('aster')) return '/logos/ASTER_solana.png';
+    if (q.includes('zcash') || q.includes('zec')) return '/logos/default.png'; // ZCASH logo not available yet
+    if (q.includes('doge') || q.includes('dogecoin')) return '/logos/default.png'; // DOGE logo not available yet
+    if (q.includes('btc') || q.includes('bitcoin')) return '/logos/BTC_ethereum.png';
+    if (q.includes('eth') || q.includes('ethereum')) return '/logos/ETH_ethereum.png';
+    if (q.includes('sol') || q.includes('solana')) return '/logos/SOL_solana.png';
+    if (q.includes('xrp') || q.includes('ripple')) return '/logos/XRP_ethereum.png';
+    if (q.includes('bnb') || q.includes('binance')) return '/logos/BNB_bsc.png';
+    if (q.includes('ada') || q.includes('cardano')) return '/logos/ADA_ethereum.png';
+    if (q.includes('atom') || q.includes('cosmos')) return '/logos/ATOM_ethereum.png';
+    if (q.includes('dai')) return '/logos/DAI_ethereum.png';
+    if (q.includes('usdt') || q.includes('tether')) return '/logos/USDT_ethereum.png';
+    if (q.includes('tao')) return '/logos/TAO_ethereum.png';
+    if (q.includes('will')) return '/logos/WILL_ethereum.png';
+    if (q.includes('google')) return '/logos/GOOGLE_ethereum.png';
+    // Default fallback
+    return '/logos/default.png';
   };
 
   return (
@@ -393,14 +558,65 @@ export default function MarketsPage() {
                     <Link href={`/markets/${market.id}`}>
                       <Card className="overflow-hidden border-0 shadow-lg bg-white hover:shadow-2xl transition-all cursor-pointer h-full group rounded-2xl">
                         <CardContent className="p-4 sm:p-5 md:p-6">
-                          {/* Header - Icon and Question */}
-                          <div className="flex items-center gap-3 sm:gap-4 mb-4 sm:mb-6">
-                            <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-orange-500 rounded-full flex items-center justify-center text-white text-xl sm:text-2xl md:text-3xl font-bold flex-shrink-0">
-                              {getMarketIcon(market.question)}
+                          {/* Header - Icon, Question, and Status Badges */}
+                          <div className="mb-4 sm:mb-6">
+                            <div className="flex items-center gap-3 sm:gap-4 mb-2">
+                              <div className="w-12 h-12 sm:w-14 sm:h-14 md:w-16 md:h-16 bg-white rounded-full flex items-center justify-center flex-shrink-0 border-2 border-gray-200 shadow-sm overflow-hidden">
+                                <Image
+                                  src={getMarketLogo(market.question)}
+                                  alt={market.question}
+                                  width={64}
+                                  height={64}
+                                  className="w-full h-full object-contain p-1"
+                                  unoptimized
+                                  onError={(e) => {
+                                    // Fallback to default if image fails to load
+                                    const target = e.target as HTMLImageElement;
+                                    target.src = '/logos/default.png';
+                                  }}
+                                />
+                              </div>
+                              <h3 className="text-base sm:text-lg font-bold text-gray-900 flex-1 line-clamp-2">
+                                {market.question}
+                              </h3>
                             </div>
-                            <h3 className="text-base sm:text-lg font-bold text-gray-900 flex-1 line-clamp-2">
-                              {market.question}
-                            </h3>
+                            {/* Status and Resolution Type Badges */}
+                            <div className="flex items-center gap-2 flex-wrap ml-[52px] sm:ml-[60px] md:ml-[68px]">
+                              <Badge 
+                                variant={market.status === 'RESOLVED' ? 'secondary' : market.status === 'EXPIRED' ? 'destructive' : market.status === 'LIVE TRADING' ? 'default' : 'outline'}
+                                className={`text-[10px] px-2 py-0.5 ${
+                                  market.status === 'RESOLVED' 
+                                    ? 'bg-gray-100 text-gray-700' 
+                                    : market.status === 'EXPIRED'
+                                    ? 'bg-orange-100 text-orange-700'
+                                    : market.status === 'LIVE TRADING'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-yellow-100 text-yellow-700'
+                                }`}
+                              >
+                                {market.status}
+                              </Badge>
+                              {market.oracleType > 0 && (
+                                <Badge 
+                                  variant="outline"
+                                  className="text-[10px] px-2 py-0.5 bg-blue-50 text-blue-700 border-blue-200"
+                                >
+                                  {getResolutionTypeLabel(market.oracleType)}
+                                </Badge>
+                              )}
+                              {market.isResolved && market.yesWins !== undefined && (
+                                <Badge 
+                                  variant="default"
+                                  className={`text-[10px] px-2 py-0.5 ${
+                                    market.yesWins 
+                                      ? 'bg-green-500 text-white' 
+                                      : 'bg-red-500 text-white'
+                                  }`}
+                                >
+                                  Winner: {market.yesWins ? 'YES' : 'NO'}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
 
                           {/* Yes/No Buttons */}
@@ -439,7 +655,7 @@ export default function MarketsPage() {
                             </div>
                           </div>
 
-                          {/* Footer - Volume and Duration */}
+                          {/* Footer - Volume, Time Remaining, and Duration */}
                           <div className="space-y-2 sm:space-y-3 pt-3 sm:pt-4 border-t border-gray-100">
                             <div className="flex items-center justify-between">
                               <span className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Volume</span>
@@ -447,12 +663,25 @@ export default function MarketsPage() {
                                 ${market.volume.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                               </span>
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Durations</span>
-                              <span className="text-sm sm:text-base font-bold text-gray-900">
-                                {Math.floor(Math.random() * 7 + 1)}D {Math.floor(Math.random() * 60)}M
-                              </span>
-                            </div>
+                            {market.expiryTimestamp > 0n && (
+                              <>
+                                <MarketCountdown expiryTimestamp={market.expiryTimestamp} />
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[10px] sm:text-xs font-medium text-gray-500 uppercase tracking-wide">Resolution</span>
+                                  <span className="text-xs sm:text-sm font-semibold text-gray-700">
+                                    {market.expiryTimestamp > 0n 
+                                      ? new Date(Number(market.expiryTimestamp) * 1000).toLocaleDateString(undefined, {
+                                          month: 'short',
+                                          day: 'numeric',
+                                          hour: '2-digit',
+                                          minute: '2-digit'
+                                        })
+                                      : 'N/A'
+                                    }
+                                  </span>
+                                </div>
+                              </>
+                            )}
                           </div>
                         </CardContent>
                       </Card>

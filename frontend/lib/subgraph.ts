@@ -83,6 +83,11 @@ export async function fetchTransactionsFromSubgraph(
   marketId: number,
   limit = 100
 ): Promise<TradeGql[]> {
+  if (!SUBGRAPH_URL) {
+    console.warn('SUBGRAPH_URL not configured, returning empty transactions array');
+    return [];
+  }
+
   const query = `
     query Trades($marketId: BigInt!, $limit: Int!) {
       trades(
@@ -126,6 +131,11 @@ export async function fetchTopHoldersFromSubgraph(
   sideYes: boolean,
   limit = 20
 ): Promise<HolderGql[]> {
+  if (!SUBGRAPH_URL) {
+    console.warn('SUBGRAPH_URL not configured, returning empty holders array');
+    return [];
+  }
+
   const query = `
     query Holders($marketId: BigInt!, $sideYes: Boolean!, $limit: Int!) {
       holders(
@@ -165,6 +175,11 @@ export async function fetchCandlesFromSubgraph(
   timeframe: '5m' | '1h' | '1d',
   fromTimestamp: number
 ): Promise<CandleGql[]> {
+  if (!SUBGRAPH_URL) {
+    console.warn('SUBGRAPH_URL not configured, returning empty candles array');
+    return [];
+  }
+
   const query = `
     query Candles($marketId: BigInt!, $timeframe: String!, $fromTimestamp: BigInt!) {
       candles(
@@ -209,6 +224,11 @@ export async function fetchCandlesFromSubgraph(
 
 // Fetch unique active traders count
 export async function fetchUniqueTradersCount(): Promise<number> {
+  if (!SUBGRAPH_URL) {
+    console.warn('SUBGRAPH_URL not configured, returning 0 for unique traders');
+    return 0;
+  }
+
   const query = `
     query UniqueTraders {
       trades(

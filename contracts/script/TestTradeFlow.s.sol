@@ -33,6 +33,7 @@ contract TestTradeFlow is Script {
         bool sellFeesTemp;
         address lpTemp;
         uint16 skip;
+        uint256 skipUint;
 
         console.log("=== Starting Trade Flow Test ===");
         console.log("USDC Address:", address(usdc));
@@ -41,7 +42,7 @@ contract TestTradeFlow is Script {
         console.log("Deployer:", vm.addr(deployerPrivateKey));
 
         // Get market data
-        (PositionToken yesToken, PositionToken noToken, uint256 reserveYes, uint256 reserveNo, uint256 usdcVault, uint256 totalPairsUSDC, uint16 feeTreasuryBps, uint16 feeVaultBps, uint16 feeLpBps, uint16 maxTradeBps, SpeculateCore.MarketStatus status, bool exists, bool sellFees, string memory question, address lp) = core.markets(marketId);
+        (PositionToken yesToken, PositionToken noToken, uint256 reserveYes, uint256 reserveNo, uint256 usdcVault, uint256 totalPairsUSDC, uint256 virtualOffsetE18, uint16 feeTreasuryBps, uint16 feeVaultBps, uint16 feeLpBps, uint16 maxTradeBps, SpeculateCore.MarketStatus status, bool exists, bool sellFees, string memory question, address lp) = core.markets(marketId);
         
         console.log("\n=== Initial Market State ===");
         console.log("Question:", question);
@@ -51,6 +52,7 @@ contract TestTradeFlow is Script {
         console.log("Reserve NO:", reserveNo);
         console.log("USDC Vault:", usdcVault);
         console.log("Total Pairs USDC:", totalPairsUSDC);
+        console.log("Virtual Offset (E18):", virtualOffsetE18);
         console.log("Fee Treasury BPS:", feeTreasuryBps);
         console.log("Fee Vault BPS:", feeVaultBps);
         console.log("Fee LP BPS:", feeLpBps);
@@ -99,7 +101,7 @@ contract TestTradeFlow is Script {
         console.log("YES Tokens Received:", yesTokensReceived);
 
         // Get market state after YES buy
-        (,, reserveYes, reserveNo, usdcVault, totalPairsUSDC, skip, skip, skip, skip, statusTemp, existsTemp, sellFeesTemp,, lpTemp) = core.markets(marketId);
+        (,, reserveYes, reserveNo, usdcVault, totalPairsUSDC, skipUint, skip, skip, skip, skip, statusTemp, existsTemp, sellFeesTemp,, lpTemp) = core.markets(marketId);
         console.log("Market State After YES Buy:");
         console.log("  Reserve YES:", reserveYes);
         console.log("  Reserve NO:", reserveNo);
@@ -131,7 +133,7 @@ contract TestTradeFlow is Script {
         console.log("NO Tokens Received:", noTokensReceived);
 
         // Get market state after NO buy
-        (,, reserveYes, reserveNo, usdcVault, totalPairsUSDC, skip, skip, skip, skip, statusTemp, existsTemp, sellFeesTemp,, lpTemp) = core.markets(marketId);
+        (,, reserveYes, reserveNo, usdcVault, totalPairsUSDC, skipUint, skip, skip, skip, skip, statusTemp, existsTemp, sellFeesTemp,, lpTemp) = core.markets(marketId);
         console.log("Market State After NO Buy:");
         console.log("  Reserve YES:", reserveYes);
         console.log("  Reserve NO:", reserveNo);
@@ -163,7 +165,7 @@ contract TestTradeFlow is Script {
         console.log("USDC Received from YES:", usdcReceivedFromYes / 1e6);
 
         // Get market state after YES sell
-        (,, reserveYes, reserveNo, usdcVault, totalPairsUSDC, skip, skip, skip, skip, statusTemp, existsTemp, sellFeesTemp,, lpTemp) = core.markets(marketId);
+        (,, reserveYes, reserveNo, usdcVault, totalPairsUSDC, skipUint, skip, skip, skip, skip, statusTemp, existsTemp, sellFeesTemp,, lpTemp) = core.markets(marketId);
         console.log("Market State After YES Sell:");
         console.log("  Reserve YES:", reserveYes);
         console.log("  Reserve NO:", reserveNo);
@@ -196,7 +198,7 @@ contract TestTradeFlow is Script {
 
         // ===== FINAL MARKET STATE =====
         console.log("\n=== Final Market State ===");
-        (,, reserveYes, reserveNo, usdcVault, totalPairsUSDC, feeTreasuryBps, feeVaultBps, feeLpBps, maxTradeBps, status, exists, sellFees, question, lp) = core.markets(marketId);
+        (,, reserveYes, reserveNo, usdcVault, totalPairsUSDC, skipUint, feeTreasuryBps, feeVaultBps, feeLpBps, maxTradeBps, status, exists, sellFees, question, lp) = core.markets(marketId);
         console.log("Question:", question);
         console.log("Reserve YES:", reserveYes);
         console.log("Reserve NO:", reserveNo);

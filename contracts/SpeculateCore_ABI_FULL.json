@@ -338,7 +338,52 @@
         "name":  "grantMarketCreator",
         "inputs":  [
                        {
-                           "name":  "a",
+                           "name":  "account",
+                           "type":  "address",
+                           "internalType":  "address"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "grantMinterRole",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "to",
+                           "type":  "address",
+                           "internalType":  "address"
+                       },
+                       {
+                           "name":  "isYes",
+                           "type":  "bool",
+                           "internalType":  "bool"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "grantMinterRoleBoth",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "to",
                            "type":  "address",
                            "internalType":  "address"
                        }
@@ -550,20 +595,10 @@
     },
     {
         "type":  "function",
-        "name":  "redeem",
+        "name":  "pauseMarket",
         "inputs":  [
                        {
                            "name":  "id",
-                           "type":  "uint256",
-                           "internalType":  "uint256"
-                       },
-                       {
-                           "name":  "isYes",
-                           "type":  "bool",
-                           "internalType":  "bool"
-                       },
-                       {
-                           "name":  "tokensIn",
                            "type":  "uint256",
                            "internalType":  "uint256"
                        }
@@ -713,17 +748,17 @@
                            "internalType":  "uint256"
                        },
                        {
-                           "name":  "t",
+                           "name":  "treasuryBps",
                            "type":  "uint16",
                            "internalType":  "uint16"
                        },
                        {
-                           "name":  "v",
+                           "name":  "vaultBps",
                            "type":  "uint16",
                            "internalType":  "uint16"
                        },
                        {
-                           "name":  "l",
+                           "name":  "lpBps",
                            "type":  "uint16",
                            "internalType":  "uint16"
                        }
@@ -766,6 +801,26 @@
                            "name":  "newVaultBps",
                            "type":  "uint16",
                            "internalType":  "uint16"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
+    },
+    {
+        "type":  "function",
+        "name":  "setSellFees",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       },
+                       {
+                           "name":  "enabled",
+                           "type":  "bool",
+                           "internalType":  "bool"
                        }
                    ],
         "outputs":  [
@@ -859,6 +914,21 @@
                         }
                     ],
         "stateMutability":  "view"
+    },
+    {
+        "type":  "function",
+        "name":  "unpauseMarket",
+        "inputs":  [
+                       {
+                           "name":  "id",
+                           "type":  "uint256",
+                           "internalType":  "uint256"
+                       }
+                   ],
+        "outputs":  [
+
+                    ],
+        "stateMutability":  "nonpayable"
     },
     {
         "type":  "function",
@@ -1071,43 +1141,6 @@
                        },
                        {
                            "name":  "resolvedPrice",
-                           "type":  "uint256",
-                           "indexed":  false,
-                           "internalType":  "uint256"
-                       }
-                   ],
-        "anonymous":  false
-    },
-    {
-        "type":  "event",
-        "name":  "Redeemed",
-        "inputs":  [
-                       {
-                           "name":  "id",
-                           "type":  "uint256",
-                           "indexed":  true,
-                           "internalType":  "uint256"
-                       },
-                       {
-                           "name":  "user",
-                           "type":  "address",
-                           "indexed":  true,
-                           "internalType":  "address"
-                       },
-                       {
-                           "name":  "isYes",
-                           "type":  "bool",
-                           "indexed":  false,
-                           "internalType":  "bool"
-                       },
-                       {
-                           "name":  "tokensIn",
-                           "type":  "uint256",
-                           "indexed":  false,
-                           "internalType":  "uint256"
-                       },
-                       {
-                           "name":  "usdcOut",
                            "type":  "uint256",
                            "indexed":  false,
                            "internalType":  "uint256"

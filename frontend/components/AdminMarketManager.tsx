@@ -21,14 +21,13 @@ export default function AdminMarketManager({ markets }: AdminMarketManagerProps)
   const { data: hash, writeContract, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess } = useWaitForTransactionReceipt({ hash });
 
-  const handleResolve = async (marketId: number) => {
+  const handleResolve = async (marketId: number, yesWins: boolean) => {
     try {
-      // SpeculateCore resolveMarket doesn't take yesWins parameter
       writeContract({
         address: addresses.core,
-                abi: SpeculateCoreABI,
+        abi: SpeculateCoreABI,
         functionName: 'resolveMarket',
-        args: [BigInt(marketId)],
+        args: [BigInt(marketId), yesWins],
       });
     } catch (error) {
       console.error('Error resolving market:', error);
@@ -82,17 +81,28 @@ export default function AdminMarketManager({ markets }: AdminMarketManagerProps)
                 <button
                   onClick={() => handlePause(market.id, market.status === 'active')}
                   className="rounded-md border border-gray-300 px-3 py-1 text-sm text-gray-700 hover:bg-gray-50"
-                  disabled={market.status === 'resolved'}
+                  disabled={market.status === 'resolved' || isPending || isConfirming}
                 >
                   {market.status === 'active' ? 'Pause' : 'Unpause'}
                 </button>
-                <button
-                  onClick={() => handleResolve(market.id)}
-                  disabled={market.status === 'resolved'}
-                  className="rounded-md bg-purple-600 px-3 py-1 text-sm text-white hover:bg-purple-500 disabled:opacity-50"
-                >
-                  Resolve
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleResolve(market.id, true)}
+                    disabled={market.status === 'resolved' || isPending || isConfirming}
+                    className="rounded-md bg-green-600 px-3 py-1 text-sm text-white hover:bg-green-500 disabled:opacity-50"
+                    title="Resolve as YES wins"
+                  >
+                    Resolve YES
+                  </button>
+                  <button
+                    onClick={() => handleResolve(market.id, false)}
+                    disabled={market.status === 'resolved' || isPending || isConfirming}
+                    className="rounded-md bg-red-600 px-3 py-1 text-sm text-white hover:bg-red-500 disabled:opacity-50"
+                    title="Resolve as NO wins"
+                  >
+                    Resolve NO
+                  </button>
+                </div>
               </div>
             </div>
           ))

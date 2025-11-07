@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
 import { useAccount, useWriteContract, useWaitForTransactionReceipt } from 'wagmi';
-import { getMarketCount, getMarket, getPriceYes, getPriceNo } from '@/lib/hooks';
+import { getMarketCount, getMarket, getPriceYes, getPriceNo, getMarketResolution } from '@/lib/hooks';
 import { addresses } from '@/lib/contracts';
 import { coreAbi, positionTokenAbi } from '@/lib/abis';
 import { formatUnits, parseUnits, createPublicClient, http } from 'viem';
@@ -56,71 +56,86 @@ export default function ClaimPage() {
 
       for (let i = 1; i <= Number(count); i++) {
         const market = await getMarket(BigInt(i));
-        const statusNum = Number(market.status);
+        const resolution = await getMarketResolution(BigInt(i));
         
-        if (statusNum === 2) {
-          const yesPrice = parseFloat(await getPriceYes(BigInt(i)));
-          const noPrice = parseFloat(await getPriceNo(BigInt(i)));
+        // Only process resolved markets
+        if (!resolution.isResolved) {
+          continue;
+        }
+        
+        const yesPrice = parseFloat(await getPriceYes(BigInt(i)));
+        const noPrice = parseFloat(await getPriceNo(BigInt(i)));
+        
+        let yesBalance = '0';
+        let noBalance = '0';
+        
+        try {
+          const yesBal = await publicClient.readContract({
+            address: market.yes as `0x${string}`,
+            abi: positionTokenAbi,
+            functionName: 'balanceOf',
+            args: [address],
+          });
+          yesBalance = formatUnits(yesBal as bigint, 18);
+        } catch (e) {
+          console.error('Error fetching YES balance:', e);
+        }
+
+        try {
+          const noBal = await publicClient.readContract({
+            address: market.no as `0x${string}`,
+            abi: positionTokenAbi,
+            functionName: 'balanceOf',
+            args: [address],
+          });
+          noBalance = formatUnits(noBal as bigint, 18);
+        } catch (e) {
+          console.error('Error fetching NO balance:', e);
+        }
+
+        // Use the resolution config to determine winner
+        const yesWon = resolution.yesWins;
+        const noWon = !resolution.yesWins;
+        
+        let claimableAmount = 0;
+        let side: 'YES' | 'NO' = 'YES';
+        let winning = false;
+
+        // Only show claimable if user has tokens for the winning side
+        // In prediction markets, winning tokens are worth 1:1 USDC after resolution
+        if (yesWon && parseFloat(yesBalance) > 0) {
+          claimableAmount = parseFloat(yesBalance); // 1:1 USDC per token
+          side = 'YES';
+          winning = true;
+        } else if (noWon && parseFloat(noBalance) > 0) {
+          claimableAmount = parseFloat(noBalance); // 1:1 USDC per token
+          side = 'NO';
+          winning = true;
+        }
+
+        if (claimableAmount > 0) {
+          // Format resolved date from expiry timestamp
+          const resolvedDate = resolution.expiryTimestamp > 0n
+            ? new Date(Number(resolution.expiryTimestamp) * 1000).toLocaleDateString(undefined, {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+              })
+            : new Date().toISOString().split('T')[0];
           
-          let yesBalance = '0';
-          let noBalance = '0';
-          
-          try {
-            const yesBal = await publicClient.readContract({
-              address: market.yes as `0x${string}`,
-              abi: positionTokenAbi,
-              functionName: 'balanceOf',
-              args: [address],
-            });
-            yesBalance = formatUnits(yesBal as bigint, 18);
-          } catch (e) {
-            console.error('Error fetching YES balance:', e);
-          }
-
-          try {
-            const noBal = await publicClient.readContract({
-              address: market.no as `0x${string}`,
-              abi: positionTokenAbi,
-              functionName: 'balanceOf',
-              args: [address],
-            });
-            noBalance = formatUnits(noBal as bigint, 18);
-          } catch (e) {
-            console.error('Error fetching NO balance:', e);
-          }
-
-          const yesWon = yesPrice > 0.9;
-          const noWon = noPrice > 0.9;
-          
-          let claimableAmount = 0;
-          let side: 'YES' | 'NO' = 'YES';
-          let winning = false;
-
-          if (yesWon && parseFloat(yesBalance) > 0) {
-            claimableAmount = parseFloat(yesBalance) * yesPrice;
-            side = 'YES';
-            winning = true;
-          } else if (noWon && parseFloat(noBalance) > 0) {
-            claimableAmount = parseFloat(noBalance) * noPrice;
-            side = 'NO';
-            winning = true;
-          }
-
-          if (claimableAmount > 0) {
-            totalAvailable += claimableAmount;
-            rewards.push({
-              marketId: i,
-              question: market.question as string,
-              resolvedDate: new Date().toISOString().split('T')[0],
-              amount: claimableAmount,
-              side,
-              winning,
-              yesBalance,
-              noBalance,
-              yesPrice,
-              noPrice,
-            });
-          }
+          totalAvailable += claimableAmount;
+          rewards.push({
+            marketId: i,
+            question: market.question as string,
+            resolvedDate,
+            amount: claimableAmount,
+            side,
+            winning,
+            yesBalance,
+            noBalance,
+            yesPrice,
+            noPrice,
+          });
         }
       }
 
@@ -161,14 +176,8 @@ export default function ClaimPage() {
       
       const balance = reward.side === 'YES' ? reward.yesBalance : reward.noBalance;
       const tokensIn = parseUnits(balance, 18);
-      
-      const priceE6 = reward.side === 'YES' 
-        ? BigInt(Math.floor(reward.yesPrice * 1e6))
-        : BigInt(Math.floor(reward.noPrice * 1e6));
-      
-      const grossUsdc = (tokensIn * priceE6) / 10n**18n;
-      const minUsdcOut = (grossUsdc * 95n) / 100n;
 
+      // Check allowance for redemption (contract needs to burn tokens)
       const allowance = await publicClient.readContract({
         address: tokenAddress,
         abi: positionTokenAbi,
@@ -187,11 +196,13 @@ export default function ClaimPage() {
         return;
       }
 
+      // Use redeem function for 1:1 USDC redemption (prediction market standard)
+      // redeem(uint256 id, bool isYes, uint256 tokensIn)
       writeContract({
         address: addresses.core,
         abi: coreAbi,
-        functionName: reward.side === 'YES' ? 'sellYes' : 'sellNo',
-        args: [BigInt(reward.marketId), tokensIn, minUsdcOut],
+        functionName: 'redeem',
+        args: [BigInt(reward.marketId), reward.side === 'YES', tokensIn],
       });
     } catch (error: any) {
       console.error('Error claiming reward:', error);

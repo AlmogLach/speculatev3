@@ -6,9 +6,9 @@ dataSources:
     name: SpeculateCore
     network: chapel  # BSC Testnet
     source:
-      address: "0x02344e92a5389D3cB0100844eE262CA10818aC6e"  # Update with your deployed address
+      address: "0x05d0e1Ab46c3e18610730ee36Aa767Df0D60Ae55"
       abi: SpeculateCore
-      startBlock: 50000000  # Start from much earlier block to catch all events
+      startBlock: 71550000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.7

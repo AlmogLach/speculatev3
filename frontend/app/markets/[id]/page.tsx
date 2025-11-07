@@ -5,11 +5,12 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { useAccount, useReadContract } from 'wagmi';
 import Link from 'next/link';
+import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import Header from '@/components/Header';
 import TradingCard from '@/components/TradingCard';
-import { getMarket, getPriceYes, getPriceNo } from '@/lib/hooks';
-import { formatUnits } from 'viem';
+import { getMarket, getPriceYes, getPriceNo, getMarketResolution } from '@/lib/hooks';
+import { formatUnits, keccak256, stringToBytes } from 'viem';
 import { addresses } from '@/lib/contracts';
 import { positionTokenAbi } from '@/lib/abis';
 import { useTopHolders } from '@/lib/useTopHolders';
@@ -236,6 +237,7 @@ export default function MarketDetailPage() {
   const [market, setMarket] = useState<any>(null);
   const [priceYes, setPriceYes] = useState<number>(0);
   const [priceNo, setPriceNo] = useState<number>(0);
+  const [resolution, setResolution] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'Position' | 'Comments' | 'Transactions' | 'Resolution'>('Resolution');
   const [holderTab, setHolderTab] = useState<'yes' | 'no'>('yes');
@@ -271,13 +273,17 @@ export default function MarketDetailPage() {
   const loadMarket = useCallback(async () => {
     if (!marketId) return;
     try {
-      const data = await getMarket(BigInt(marketId));
-      const yesPrice = await getPriceYes(BigInt(marketId));
-      const noPrice = await getPriceNo(BigInt(marketId));
+      const [data, yesPrice, noPrice, resolutionData] = await Promise.all([
+        getMarket(BigInt(marketId)),
+        getPriceYes(BigInt(marketId)),
+        getPriceNo(BigInt(marketId)),
+        getMarketResolution(BigInt(marketId)),
+      ]);
       
       setMarket(data);
       setPriceYes(parseFloat(yesPrice));
       setPriceNo(parseFloat(noPrice));
+      setResolution(resolutionData);
     } catch (error) {
       console.error('Error loading market:', error);
     } finally {
@@ -415,14 +421,26 @@ export default function MarketDetailPage() {
 
   const totalVolume = market?.totalPairsUSDC ? Number(formatUnits(market.totalPairsUSDC as bigint, 6)) : 0;
 
-  const getAssetIcon = (question: string) => {
-    if (question.includes('BTC') || question.includes('Bitcoin')) return '₿';
-    if (question.includes('ETH') || question.includes('Ethereum')) return 'Ξ';
-    if (question.includes('Sol') || question.includes('Solana')) return '◎';
-    if (question.includes('XRP') || question.includes('Ripple')) return '✕';
-    if (question.includes('Doge') || question.includes('Dogecoin')) return '🐕';
-    if (question.includes('BNB')) return '🔷';
-    return '💵';
+  const getAssetLogo = (question: string): string => {
+    const q = question.toLowerCase();
+    // More specific matches first to avoid false positives
+    if (q.includes('aster')) return '/logos/ASTER_solana.png';
+    if (q.includes('zcash') || q.includes('zec')) return '/logos/default.png'; // ZCASH logo not available yet
+    if (q.includes('doge') || q.includes('dogecoin')) return '/logos/default.png'; // DOGE logo not available yet
+    if (q.includes('btc') || q.includes('bitcoin')) return '/logos/BTC_ethereum.png';
+    if (q.includes('eth') || q.includes('ethereum')) return '/logos/ETH_ethereum.png';
+    if (q.includes('sol') || q.includes('solana')) return '/logos/SOL_solana.png';
+    if (q.includes('xrp') || q.includes('ripple')) return '/logos/XRP_ethereum.png';
+    if (q.includes('bnb') || q.includes('binance')) return '/logos/BNB_bsc.png';
+    if (q.includes('ada') || q.includes('cardano')) return '/logos/ADA_ethereum.png';
+    if (q.includes('atom') || q.includes('cosmos')) return '/logos/ATOM_ethereum.png';
+    if (q.includes('dai')) return '/logos/DAI_ethereum.png';
+    if (q.includes('usdt') || q.includes('tether')) return '/logos/USDT_ethereum.png';
+    if (q.includes('tao')) return '/logos/TAO_ethereum.png';
+    if (q.includes('will')) return '/logos/WILL_ethereum.png';
+    if (q.includes('google')) return '/logos/GOOGLE_ethereum.png';
+    // Default fallback
+    return '/logos/default.png';
   };
 
   if (loading) {
@@ -558,9 +576,21 @@ export default function MarketDetailPage() {
 
           {/* Market Icon and Question */}
           <div className="flex items-start gap-3 sm:gap-4 md:gap-6 mb-4">
-            {/* Large Circular Orange Icon */}
-            <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-orange-500 rounded-full flex items-center justify-center flex-shrink-0">
-              <span className="text-2xl sm:text-3xl md:text-4xl text-white font-bold">{getAssetIcon(market.question as string)}</span>
+            {/* Large Circular Icon with Logo */}
+            <div className="w-12 h-12 sm:w-16 sm:h-16 md:w-20 md:h-20 bg-white rounded-full flex items-center justify-center flex-shrink-0 border-2 border-gray-200 shadow-sm overflow-hidden">
+              <Image
+                src={getAssetLogo(market.question as string)}
+                alt={market.question as string}
+                width={80}
+                height={80}
+                className="w-full h-full object-contain p-1"
+                unoptimized
+                onError={(e) => {
+                  // Fallback to default if image fails to load
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/logos/default.png';
+                }}
+              />
             </div>
             <div className="flex-1 min-w-0">
               <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-gray-900 mb-2 sm:mb-3 break-words">{market.question}</h1>
@@ -756,27 +786,115 @@ export default function MarketDetailPage() {
                 >
                   {activeTab === 'Resolution' && (
                     <div className="space-y-4 sm:space-y-6">
-                      <div className="p-4 sm:p-6 bg-gradient-to-br from-[#14B8A6]/5 to-[#14B8A6]/10 rounded-xl border border-[#14B8A6]/20">
-                        <h4 className="text-xs sm:text-sm font-bold text-gray-900 mb-2 sm:mb-3 uppercase tracking-wide flex items-center gap-2">
-                          <svg className="w-4 h-4 text-[#14B8A6] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-                          </svg>
-                          <span>Resolution Criteria</span>
-                        </h4>
-                        <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
-                          Market resolves YES if Bitcoin reaches $100,000 USD on Coinbase spot price by end of trading day December 31, 2026. Otherwise resolves NO.
-                        </p>
-                      </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
-                        <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
-                          <div className="text-[10px] sm:text-xs font-bold text-gray-500 mb-1 sm:mb-2 uppercase">Resolution Source</div>
-                          <div className="text-xs sm:text-sm font-bold text-gray-900">Coinbase</div>
+                      {resolution && resolution.expiryTimestamp > 0n ? (
+                        <>
+                          {/* Resolution Status */}
+                          {resolution.isResolved ? (
+                            <div className="p-4 sm:p-6 bg-gradient-to-br from-green-500/10 to-green-600/10 rounded-xl border border-green-500/20">
+                              <div className="flex items-center gap-3 mb-2">
+                                <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <h4 className="text-sm sm:text-base font-bold text-green-900">Market Resolved</h4>
+                              </div>
+                              <p className="text-xs sm:text-sm text-gray-700">
+                                Winner: <span className="font-bold">{resolution.yesWins ? 'YES' : 'NO'}</span>
+                              </p>
+                            </div>
+                          ) : (
+                            <div className="p-4 sm:p-6 bg-gradient-to-br from-[#14B8A6]/5 to-[#14B8A6]/10 rounded-xl border border-[#14B8A6]/20">
+                              <h4 className="text-xs sm:text-sm font-bold text-gray-900 mb-2 sm:mb-3 uppercase tracking-wide flex items-center gap-2">
+                                <svg className="w-4 h-4 text-[#14B8A6] flex-shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                </svg>
+                                <span>Resolution Criteria</span>
+                              </h4>
+                              {resolution.oracleType === 1 ? (
+                                <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                                  {resolution.comparison === 0 && `Market resolves YES if price is above $${Number(formatUnits(resolution.targetValue, 8)).toLocaleString()}`}
+                                  {resolution.comparison === 1 && `Market resolves YES if price is below $${Number(formatUnits(resolution.targetValue, 8)).toLocaleString()}`}
+                                  {resolution.comparison === 2 && `Market resolves YES if price equals $${Number(formatUnits(resolution.targetValue, 8)).toLocaleString()}`}
+                                  {' at expiry. Otherwise resolves NO.'}
+                                </p>
+                              ) : (
+                                <p className="text-xs sm:text-sm text-gray-700 leading-relaxed">
+                                  This market will be resolved manually by the admin.
+                                </p>
+                              )}
+                            </div>
+                          )}
+
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 md:gap-6">
+                            <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+                              <div className="text-[10px] sm:text-xs font-bold text-gray-500 mb-1 sm:mb-2 uppercase">Resolution Type</div>
+                              <div className="text-xs sm:text-sm font-bold text-gray-900">
+                                {resolution.oracleType === 0 ? 'Manual' : resolution.oracleType === 1 ? 'Chainlink Auto' : 'Chainlink Functions'}
+                              </div>
+                            </div>
+                            
+                            {resolution.oracleType === 1 && (
+                              <>
+                                <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+                                  <div className="text-[10px] sm:text-xs font-bold text-gray-500 mb-1 sm:mb-2 uppercase">Price Feed</div>
+                                  <div className="text-xs sm:text-sm font-bold text-gray-900">
+                                    {(() => {
+                                      // Try to decode feed ID to symbol by hashing common symbols
+                                      const feedId = resolution.priceFeedId.toLowerCase();
+                                      const commonFeeds = ['BTC/USD', 'ETH/USD', 'BNB/USD', 'SOL/USD', 'ADA/USD', 'XRP/USD'];
+                                      
+                                      for (const symbol of commonFeeds) {
+                                        const hash = keccak256(stringToBytes(symbol)).toLowerCase();
+                                        if (hash === feedId) {
+                                          return symbol;
+                                        }
+                                      }
+                                      
+                                      // Fallback: show shortened hash
+                                      return feedId.slice(0, 10) + '...';
+                                    })()}
+                                  </div>
+                                </div>
+                                
+                                {resolution.targetValue > 0n && (
+                                  <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+                                    <div className="text-[10px] sm:text-xs font-bold text-gray-500 mb-1 sm:mb-2 uppercase">Target Value</div>
+                                    <div className="text-xs sm:text-sm font-bold text-gray-900">
+                                      ${Number(formatUnits(resolution.targetValue, 8)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                    </div>
+                                  </div>
+                                )}
+                              </>
+                            )}
+                            
+                            <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+                              <div className="text-[10px] sm:text-xs font-bold text-gray-500 mb-1 sm:mb-2 uppercase">Resolution Date</div>
+                              <div className="text-xs sm:text-sm font-bold text-gray-900">
+                                {new Date(Number(resolution.expiryTimestamp) * 1000).toLocaleString(undefined, {
+                                  year: 'numeric',
+                                  month: 'short',
+                                  day: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit',
+                                  timeZoneName: 'short'
+                                })}
+                              </div>
+                            </div>
+                            
+                            {resolution.isResolved && (
+                              <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
+                                <div className="text-[10px] sm:text-xs font-bold text-gray-500 mb-1 sm:mb-2 uppercase">Winner</div>
+                                <div className={`text-xs sm:text-sm font-bold ${resolution.yesWins ? 'text-green-600' : 'text-red-600'}`}>
+                                  {resolution.yesWins ? 'YES' : 'NO'}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="p-4 sm:p-6 bg-gray-50 rounded-xl">
+                          <p className="text-xs sm:text-sm text-gray-500">No resolution information available</p>
                         </div>
-                        <div className="p-3 sm:p-4 bg-gray-50 rounded-xl">
-                          <div className="text-[10px] sm:text-xs font-bold text-gray-500 mb-1 sm:mb-2 uppercase">Resolution Date</div>
-                          <div className="text-xs sm:text-sm font-bold text-gray-900">Dec 31, 2026</div>
-                        </div>
-                      </div>
+                      )}
                     </div>
                   )}
 
