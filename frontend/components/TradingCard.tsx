@@ -125,8 +125,20 @@ export default function TradingCard({ marketId }: TradingCardProps) {
     query: { enabled: tradeMode === 'sell' && !!tokenAddr && !!amount },
   });
 
-  const needsUsdcApproval = tradeMode === 'buy' && amount && usdcAllowance && parseUnits(amount, 6) > (usdcAllowance as bigint);
-  const needsTokenApproval = tradeMode === 'sell' && amount && tokenAllowance && parseUnits(amount, 18) > (tokenAllowance as bigint);
+  const usdcAllowanceValue = usdcAllowance as bigint | undefined;
+  const tokenAllowanceValue = tokenAllowance as bigint | undefined;
+
+  const needsUsdcApproval =
+    tradeMode === 'buy' &&
+    !!amount &&
+    usdcAllowanceValue !== undefined &&
+    parseUnits(amount, 6) > usdcAllowanceValue;
+
+  const needsTokenApproval =
+    tradeMode === 'sell' &&
+    !!amount &&
+    tokenAllowanceValue !== undefined &&
+    parseUnits(amount, 18) > tokenAllowanceValue;
 
   // Auto-trade after approval
   useEffect(() => {
@@ -412,3 +424,4 @@ export default function TradingCard({ marketId }: TradingCardProps) {
     </div>
   );
 }
+
