@@ -1,156 +1,115 @@
-# 🧠 SpeculateX Protocol
+# SpeculateX
 
 <div align="center">
 
-![SpeculateX Banner](./docs/banner.png)
+**Trade on anything. Bet on everything.**
 
-**Decentralized prediction markets powered by LMSR, Chainlink automation, and advanced bonding curves**
+The future of prediction markets is here.
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Solidity](https://img.shields.io/badge/Solidity-0.8.24-e6e6e6?logo=solidity)](https://soliditylang.org/)
-[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
-[![BSC Testnet](https://img.shields.io/badge/BSC-Testnet-yellow)](https://testnet.bscscan.com/)
-
-[Live Demo](https://speculatex.app) • [Documentation](./docs) • [Smart Contracts](./contracts) • [Twitter](https://twitter.com/speculatex)
+[Launch App](https://speculatex.app) • [Documentation](https://docs.speculatex.app) • [Twitter](https://twitter.com/speculatex)
 
 </div>
 
 ---
 
-## 🎯 What is SpeculateX?
+## What is SpeculateX?
 
-SpeculateX is a **fully decentralized prediction market protocol** where users can create, trade, and resolve binary outcome markets on real-world events. Think Polymarket, but entirely on-chain with automated oracle resolution and sophisticated market-making algorithms.
+SpeculateX is a **decentralized prediction market platform** where you can trade on the outcome of real-world events. Will Bitcoin hit $100k? Will ETH reach $5k? Create a market, take a position, and profit from being right.
 
-### Key Features
+Unlike traditional betting platforms, SpeculateX uses sophisticated bonding curves and automated oracles to create liquid, efficient markets that settle instantly when events resolve.
 
-- 🤖 **Automated Resolution** - Chainlink oracles automatically settle markets based on real price feeds
-- 📈 **LMSR Pricing** - Logarithmic Market Scoring Rule for optimal liquidity and price discovery
-- 💰 **LP Incentives** - Earn fees on every trade by providing liquidity
-- 🛡️ **Guaranteed Solvency** - Mathematical backing ensures all winners can be paid
-- ⚡ **Instant Settlement** - No orderbooks, no waiting - trade executes immediately
-- 🔒 **Non-Custodial** - Your keys, your tokens, your winnings
+### Why SpeculateX?
+
+**🎯 Trade on Anything**  
+From crypto prices to sports outcomes, economic indicators to political events - if it can be measured, you can trade it.
+
+**⚡ Instant Liquidity**  
+No waiting for counterparties. Our automated market maker provides instant execution at transparent prices.
+
+**🤖 Automated Settlement**  
+Chainlink oracles automatically resolve markets based on real-world data. No disputes, no delays.
+
+**💰 Earn as You Trade**  
+Provide liquidity to markets and earn fees from every trade. The more active the market, the more you earn.
+
+**🔒 Fully Decentralized**  
+Your funds, your custody. Smart contracts handle everything - no central authority can freeze or seize your assets.
 
 ---
 
-## 🚀 How It Works
+## How It Works
 
 ### For Traders
 
-```mermaid
-graph LR
-    A[Deposit USDC] --> B[Buy YES/NO Tokens]
-    B --> C[Price Adjusts via LMSR]
-    C --> D{Market Resolves}
-    D -->|You Win| E[Redeem 1:1 for USDC]
-    D -->|You Lose| F[Tokens Worth $0]
-```
+**1. Find a Market**  
+Browse active markets on crypto prices, sports, politics, or any measurable event.
+
+**2. Buy Outcome Tokens**  
+Think BTC will hit $100k? Buy YES tokens. Think it won't? Buy NO tokens. Prices reflect the market's probability.
+
+**3. Watch Your Position**  
+As traders buy and sell, prices update in real-time based on market sentiment.
+
+**4. Collect Your Winnings**  
+When the market resolves, winning tokens are redeemable 1:1 for USDC. Wrong predictions are worth $0.
 
 **Example:**
-1. Market: "Will BTC hit $100k by Dec 2025?"
-2. You buy 100 YES tokens for 55 USDC (55% probability)
-3. BTC hits $100k → Market resolves YES
-4. You redeem 100 tokens for 100 USDC → **45 USDC profit** (82% ROI)
+- Market: "Will BTC hit $100k by Dec 2025?"
+- You buy 100 YES tokens for $55 (55% probability)
+- BTC hits $100k → Market resolves YES
+- You redeem 100 tokens for $100 → **$45 profit (82% ROI)**
 
 ### For Liquidity Providers
 
-```mermaid
-graph LR
-    A[Deposit USDC] --> B[Provide Liquidity]
-    B --> C[Earn 1% on Every Trade]
-    C --> D{Market Resolves}
-    D --> E[Claim Fees + Residual USDC]
-```
+**Earn passive income** by providing liquidity to markets:
 
-**LP Benefits:**
-- Earn 1% of all trading volume
-- Claim fees anytime before resolution
-- Receive leftover vault funds after all winners redeem
-- No impermanent loss (unlike traditional AMMs)
+- Deposit USDC to any market
+- Earn 1% fee on every trade
+- Claim fees anytime
+- Receive leftover funds after market resolves
+
+**No impermanent loss.** Your capital backs the market and earns consistently from trading activity.
 
 ### For Market Creators
 
-Admins can create markets in 60 seconds:
-1. Define question: "Will ETH reach $5k by Q1 2026?"
-2. Choose oracle: Chainlink ETH/USD feed
-3. Set target ($5,000) and comparison (Above)
-4. Add initial liquidity (min 10 USDC)
-5. Market goes live instantly
+Got an idea for a market? Create it:
+
+1. Define your question
+2. Choose an oracle (for automated resolution)
+3. Add initial liquidity
+4. Market goes live instantly
+
+Markets can be about anything with verifiable outcomes: crypto prices, election results, sports scores, economic data, and more.
 
 ---
 
-## 🏗️ Technical Architecture
+## Platform Features
 
-### Smart Contracts (Solidity 0.8.24)
+### Advanced Market Making
 
-```
-┌─────────────────────────────────────────────────────────┐
-│                    SpeculateCore.sol                    │
-│  • LMSR pricing engine with on-chain logarithms         │
-│  • Position token minting (YES/NO ERC20s)               │
-│  • Solvency enforcement on every trade                  │
-│  • LP fee distribution (MasterChef-style)               │
-│  • Jump caps to prevent price manipulation              │
-└─────────────────────────────────────────────────────────┘
-                            │
-                            │ resolveMarketWithPrice()
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│                 ChainlinkResolver.sol                   │
-│  • Single upkeep resolves ALL markets                   │
-│  • Global feed registry (BTC/USD, ETH/USD, etc)         │
-│  • Scans markets every hour, auto-resolves expired      │
-│  • Stale data protection (1-hour freshness)             │
-└─────────────────────────────────────────────────────────┘
-                            │
-                            │ latestRoundData()
-                            ▼
-┌─────────────────────────────────────────────────────────┐
-│               Chainlink Price Feeds                     │
-│  Decentralized oracles for crypto prices               │
-└─────────────────────────────────────────────────────────┘
-```
+Our proprietary bonding curve algorithm ensures:
+- **Deep liquidity** at all price levels
+- **Fair pricing** based on supply and demand
+- **Instant execution** with transparent slippage
+- **Protected markets** with anti-manipulation safeguards
 
-**Key Innovations:**
+### Oracle Integration
 
-1. **On-Chain LMSR Math** - Full logarithmic calculations in Solidity (no external dependencies)
-   ```solidity
-   // Cost function: C(q) = max(qY,qN) + b * ln(1 + exp(|qY - qN| / b))
-   // Price: p(YES) = exp((qY - qN) / b) / (1 + exp((qY - qN) / b))
-   ```
+Markets can resolve automatically using real-world data:
+- **Crypto prices** (BTC, ETH, BNB, and more)
+- **Sports scores** (coming soon)
+- **Economic indicators** (coming soon)
+- **Custom data sources** (via Chainlink)
 
-2. **Backing Enforcement** - Every trade verifies: `vault >= max(qYes, qNo) * $1`
-   - Prevents undercollateralization
-   - Guarantees all winners can be paid
-   - No risk of protocol insolvency
+No disputes, no manual verification - outcomes settle automatically when oracles confirm the result.
 
-3. **Jump Caps** - Configurable per-market price movement limits
-   - Prevents single large trades from manipulating thin markets
-   - Activates when vault < threshold (default: $10k)
-   - Default cap: 15% price change per transaction
+### Security First
 
-4. **Dynamic Resolution** - One Chainlink upkeep handles infinite markets
-   - Register oracle feed once → use for all markets
-   - Automatically scans and resolves expired markets
-   - No manual setup needed per market
-
-### Frontend Stack
-
-- **Next.js 15** - App Router with React Server Components
-- **React 19** - Latest React with concurrent features
-- **Wagmi 2 + Viem 2** - Modern Web3 interaction
-- **RainbowKit** - Beautiful wallet connection UX
-- **TanStack Query 5** - Data fetching with smart caching
-- **Supabase** - Off-chain data storage (trades, price history)
-- **Framer Motion** - Smooth animations
-- **Tailwind CSS** - Utility-first styling
-- **Lightweight Charts** - TradingView-quality price charts
-
-**Performance Features:**
-- Optimistic UI updates
-- Real-time price polling
-- Cached market data
-- Progressive loading
-- Mobile-first responsive design
+- **Smart contract audited** (audit in progress)
+- **Non-custodial** - you control your funds
+- **Guaranteed payouts** - mathematical solvency enforced
+- **Reentrancy protected** - industry-standard security
+- **Battle-tested** infrastructure on BNB Smart Chain
 
 ---
 
