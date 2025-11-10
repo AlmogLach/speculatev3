@@ -2,6 +2,19 @@
 
 <div align="center">
 
+![SpeculateX Banner](./docs/banner.png)
+
+**Decentralized prediction markets powered by LMSR, Chainlink automation, and advanced bonding curves**
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Solidity](https://img.shields.io/badge/Solidity-0.8.24-e6e6e6?logo=solidity)](https://soliditylang.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?logo=next.js)](https://nextjs.org/)
+[![BSC Testnet](https://img.shields.io/badge/BSC-Testnet-yellow)](https://testnet.bscscan.com/)
+
+[Live Demo](https://speculatex.app) • [Documentation](./docs) • [Smart Contracts](./contracts) • [Twitter](https://twitter.com/speculatex)
+
+</div>
+
 **Trade on anything. Bet on everything.**
 
 The future of prediction markets is here.
